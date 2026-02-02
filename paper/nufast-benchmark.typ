@@ -302,6 +302,35 @@ const spectrum = wasmCalculateEnergySpectrum({
 
 The compiled WASM module is approximately *32 KB gzipped*, enabling browser-based neutrino physics with near-native performance.
 
+== Zig Implementation
+
+We also provide a Zig implementation that achieves the highest performance:
+
+```zig
+const nufast = @import("nufast");
+
+// Vacuum oscillation
+const params = nufast.VacuumParams.default;
+const probs = nufast.vacuumProbability(params, 1300.0, 2.5);
+// probs[1][0] = P(νμ → νe)
+
+// Batch calculations with pre-computed matrix
+const batch = nufast.VacuumBatch.init(params);
+for (energies) |E| {
+    const p = batch.probabilityAt(1300.0, E);
+}
+
+// SIMD: 4 energies simultaneously
+var E_vec: nufast.F64Vec = .{ 1.0, 2.0, 3.0, 4.0 };
+const p_vec = nufast.vacuumProbabilitySimd(batch, L, E_vec);
+```
+
+The Zig implementation uses:
+- Native SIMD via `@Vector` types
+- Zero heap allocations in hot paths
+- Explicit inlining control
+- Zig 0.15.2's improved optimizer
+
 = Benchmark Methodology
 
 All benchmarks were performed on AMD Ryzen (WSL2/Windows). Methodology:
@@ -325,8 +354,9 @@ Rust benchmarks use Criterion with statistical analysis. C++, Fortran, and Pytho
       [*Language*], [*Vacuum*], [*N=0*], [*N=1*], [*N=2*], [*N=3*],
     ),
     table.hline(stroke: 1pt),
-    [*Rust*], [61 ns], [*95 ns*], [106 ns], [113 ns], [117 ns],
-    [C++], [*49 ns*], [130 ns], [143 ns], [154 ns], [164 ns],
+    [*Zig*], [*25.6 ns*], [*73.3 ns*], [*77.7 ns*], [*81.1 ns*], [*82.4 ns*],
+    [Rust], [61 ns], [95 ns], [106 ns], [113 ns], [117 ns],
+    [C++], [49 ns], [130 ns], [143 ns], [154 ns], [164 ns],
     [Fortran], [51 ns], [107 ns], [123 ns], [146 ns], [167 ns],
     [Python], [14,700 ns], [21,900 ns], [21,200 ns], [18,500 ns], [16,300 ns],
     table.hline(stroke: 0.5pt),
@@ -346,15 +376,30 @@ Rust benchmarks use Criterion with statistical analysis. C++, Fortran, and Pytho
       [*Comparison*], [*Vacuum*], [*Matter (N=0)*], [*Interpretation*],
     ),
     table.hline(stroke: 1pt),
+    [Zig vs Rust], [*−58%*], [*−23%*], [Zig is fastest],
+    [Zig vs C++], [*−48%*], [*−44%*], [Zig dominates],
     [Rust vs C++], [+24%], [*−27%*], [Rust faster for matter],
     [Rust vs Fortran], [+20%], [−11%], [Rust competitive],
-    [Rust vs Python], [×241], [×230], [Compiled advantage],
+    [Zig vs Python], [×574], [×299], [Compiled advantage],
     table.hline(stroke: 0.5pt),
   ),
-  caption: [Relative performance (negative = Rust faster).]
+  caption: [Relative performance (negative = faster).]
 ) <tab:comparison>
 
 == Key Findings
+
+=== Zig Achieves Fastest Performance
+
+The Zig implementation achieves the fastest times across all configurations:
+- *2.4× faster* than Rust for vacuum oscillations (25.6 ns vs 61 ns)
+- *1.3× faster* than Rust for matter oscillations (73.3 ns vs 95 ns)
+- *1.8× faster* than C++ for matter calculations
+
+This performance advantage stems from:
+1. *No ownership overhead*: Zig's explicit memory model allows aggressive inlining without borrow-checker constraints
+2. *Direct SIMD*: Zig's `@Vector` type provides native SIMD operations
+3. *Zero hidden allocations*: All computation occurs on the stack
+4. *Simpler optimizer targets*: LLVM can optimize Zig's simpler IR more effectively
 
 === Rust Outperforms C++ for Matter Calculations
 
