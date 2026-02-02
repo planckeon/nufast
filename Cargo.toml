@@ -1,6 +1,6 @@
 [package]
 name = "nufast"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Baalateja Kataru <baalateja.k@gmail.com>"]
 description = "Fast and accurate three-flavor neutrino oscillation probabilities in vacuum and matter"
