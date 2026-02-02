@@ -106,10 +106,25 @@ let delta_antinu = -delta;
 
 ## Performance
 
-Benchmarked on AMD Ryzen 9 5900X:
-- Vacuum: ~15 ns per calculation
-- Matter (N_Newton=0): ~25 ns per calculation
-- Matter (N_Newton=1): ~30 ns per calculation
+Comprehensive benchmarks on AMD Ryzen (WSL2), 10M iterations each:
+
+| Language | Vacuum | Matter N=0 | Matter N=1 | Matter N=2 | Matter N=3 |
+|----------|--------|------------|------------|------------|------------|
+| **Rust** | 61 ns  | **95 ns**  | 106 ns     | 113 ns     | 117 ns     |
+| C++      | 49 ns  | 130 ns     | 143 ns     | 154 ns     | 164 ns     |
+| Fortran  | 51 ns  | 107 ns     | 123 ns     | 146 ns     | 167 ns     |
+| Python   | 14,700 ns | 21,900 ns | 21,200 ns | 18,500 ns | 16,300 ns |
+
+**Key finding**: Rust is ~27% faster than C++ for matter calculations, likely due to LLVM's better optimization of the Newton iteration loop.
+
+Throughput:
+- Vacuum: 17.5 million calculations/sec
+- Matter (N=0): 10.5 million calculations/sec
+
+Run benchmarks yourself:
+```bash
+cargo bench
+```
 
 ## References
 

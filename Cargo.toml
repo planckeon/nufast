@@ -2,7 +2,7 @@
 name = "nufast"
 version = "0.2.0"
 edition = "2021"
-authors = ["Baalateja Kataru <baalateja@planckeon.org>"]
+authors = ["Baalateja Kataru <baalateja.k@gmail.com>"]
 description = "Fast and accurate three-flavor neutrino oscillation probabilities in vacuum and matter"
 license = "MIT"
 repository = "https://github.com/planckeon/nufast"
@@ -14,6 +14,11 @@ categories = ["science", "simulation"]
 [dependencies]
 
 [dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "oscillation"
+harness = false
 
 [features]
 default = []
