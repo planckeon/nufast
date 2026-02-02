@@ -173,6 +173,38 @@ In October 2024, the author consulted Dr. Peter Denton regarding research direct
 
 Dr. Denton recommended the NuFast algorithm, noting approximately 100 ns per probability calculation on his laptop. This benchmark became a target for our Rust implementation.
 
+=== Precursor Rust Implementations (2024)
+
+Before implementing the full NuFast algorithm, the author developed several prototype implementations:
+
+- *rustrino* (August 2024): Initial exploration of Rust for neutrino physics, establishing the development environment and build toolchain.
+
+- *nosc* (October 2024): A working two-flavor oscillation engine implementing the standard vacuum and matter formulas. This served as a testbed for understanding Rust's numerical performance characteristics and API design patterns for physics libraries.
+
+These incremental steps informed the design decisions in the final `nufast` implementation, particularly regarding:
+- Parameter struct design (`VacuumParameters`, `MatterParameters`)
+- Result struct layout for probability triplets
+- Benchmark methodology using Criterion
+
+The complete chronology of the author's neutrino software development is:
+#figure(
+  table(
+    columns: (1fr, 1.5fr, 2.5fr),
+    inset: 6pt,
+    align: (left, left, left),
+    stroke: (x: none, y: 0.5pt),
+    table.header([*Date*], [*Project*], [*Description*]),
+    table.hline(stroke: 1pt),
+    [May 2023], [`pytrino`], [Python/Cython library (undergrad thesis)],
+    [Aug 2024], [`rustrino`], [First Rust prototype],
+    [Sep 2024], [`nufast`], [NuFast algorithm port (this work)],
+    [Oct 2024], [`nosc`], [Two-flavor Rust implementation],
+    [Feb 2026], [`nufast-wasm`], [WebAssembly bindings for ITN],
+    table.hline(stroke: 0.5pt),
+  ),
+  caption: [Chronology of the author's neutrino oscillation software.]
+) <tab:chronology>
+
 = Algorithm Details
 
 == Vacuum Oscillations
