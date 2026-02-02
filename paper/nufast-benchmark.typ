@@ -83,30 +83,60 @@ comparable to or better than the original implementations.
 
 == Motivation
 
-This project originated from correspondence with Dr. Peter Denton in October
-2024 regarding research opportunities in neutrino physics. The author had
-previously worked on neutrino oscillation phenomenology during undergraduate
-research at Krea University under Dr. Sushant Raut, including attempts to
-apply the Eigenvalue-Eigenvector Identity (Rosetta identity) to derive novel
-oscillation probability expressions.
+This project represents the culmination of several years of work on neutrino
+oscillation phenomenology.
 
-During our discussion of computational methods, Dr. Denton recommended the
-NuFast algorithm, stating: "We recently put together what we think is the
-optimal algorithm" and pointing to the preprint arXiv:2405.02400 and the
-reference implementations at #link("https://github.com/PeterDenton/NuFast").
-He noted that NuFast had already been implemented into the MaCH3 framework
-(the primary reweighting code for both US and Japanese oscillation experiments
-including T2K) and JUNO analysis pipelines, achieving "dramatic speed ups
-(close to an order of magnitude) over other 'optimized' algorithms."
+=== Undergraduate Research (2022–2023)
 
-The decision to port NuFast to Rust was motivated by several factors:
+The author's undergraduate capstone thesis at Krea University, supervised by
+Dr. Sushant Raut, explored the "Interplay between Neutrino Oscillations and
+Linear Algebra." The research investigated applications of the Eigenvalue-
+Eigenvector Identity (EEI, also called the Rosetta identity) discovered by
+Denton, Parke, and Zhang [2], as well as the Adjugate Identity [3], to
+streamline symbolic calculations of oscillation probabilities.
+
+The goal was to derive novel series expansions of oscillation probabilities in
+matter up to second order in the mass hierarchy parameter $alpha$ only—as
+opposed to second order in both $alpha$ and $s_(13)$ as in the influential
+work of Akhmedov et al. [4]. Using Mathematica and the Cayley-Hamilton
+formalism, the author explored whether these linear algebra identities could
+simplify the analytic calculation. While the symbolic expansions proved too
+computationally intensive (repeatedly crashing Mathematica), the numerical
+implementations were successful, resulting in `pytrino`—a Python/Cython library
+published on PyPI that computes oscillation probabilities using the EEI and
+Adjugate identities.
+
+=== Postgraduate Research (2023–2024)
+
+The author continued this work during a postgraduate program at Krea University,
+pivoting to investigate neutrino oscillations on quantum computers using
+Hamiltonian simulation (Trotter-Suzuki decomposition) and quantum machine
+learning approaches. This work successfully reproduced published results [5, 6]
+using IBM's Qiskit framework.
+
+=== Correspondence with Dr. Denton (October 2024)
+
+In October 2024, the author reached out to Dr. Peter Denton regarding research
+opportunities in neutrino physics, describing the prior work on the EEI and
+the challenges encountered with 3+1 sterile neutrino models. Dr. Denton
+explained that while the EEI is powerful for three-flavor oscillations
+(requiring only 2×2 matrix diagonalization), extending to four flavors requires
+solving cubic equations for eigenvectors—"analytically much much worse, and
+also numerically somewhat unstable."
+
+Dr. Denton recommended the NuFast algorithm: "We recently put together what we
+think is the optimal algorithm" (arXiv:2405.02400), noting its adoption in the
+MaCH3 framework and JUNO pipelines. He reported ~100 ns per probability
+calculation on his laptop.
+
+=== Rust Implementation (2024–2026)
+
+The decision to port NuFast to Rust was motivated by:
 
 1. *Performance exploration*: Testing whether Rust's ownership model and LLVM
-   backend could match or exceed traditional numerical computing languages.
-   Dr. Denton reported ~100 ns per oscillation probability on his laptop;
-   our Rust implementation achieves ~95 ns for matter calculations.
-2. *Modern tooling*: Enabling integration with Rust-based physics tools and
-   WebAssembly deployment for browser applications
+   backend could match or exceed C++. Our implementation achieves ~95 ns for
+   matter calculations—beating Dr. Denton's quoted benchmark.
+2. *Modern tooling*: Enabling WebAssembly deployment for browser applications
 3. *Educational visualization*: Creating "Imagining the Neutrino," an
    interactive web-based tool for teaching neutrino oscillation concepts
 
@@ -309,7 +339,15 @@ repository under `benchmarks/`.
 
 + P. B. Denton, "Neutrino Oscillation Probabilities: A Compact Multi-algorithm Approach," arXiv:2405.02400 (2024).
 
-+ P. B. Denton and S. J. Parke, "Simple and precise factorization of the Jarlskog invariant for neutrino oscillations in matter," Phys. Rev. D 100, 053004 (2019). arXiv:1902.07185
++ P. B. Denton, S. J. Parke, and X. Zhang, "Eigenvector-based approach to neutrino oscillation probabilities in matter," Phys. Rev. D 101, 093001 (2020). arXiv:1907.02534
+
++ A. Abdullahi and S. J. Parke, "Eigenvalue-independent eigenvectors and the adjugate of a matrix," arXiv:2212.12565 (2022).
+
++ E. K. Akhmedov, R. Johansson, M. Lindner, T. Ohlsson, and T. Schwetz, "Series expansions for three-flavor neutrino oscillation probabilities in matter," JHEP 04, 078 (2004). arXiv:hep-ph/0402175
+
++ C. A. Argüelles and B. J. P. Jones, "Neutrino Oscillations in a Quantum Computer," Phys. Rev. D 99, 096005 (2019). arXiv:1904.10559
+
++ J. Turro et al., "A Quantum simulation of neutrino-matter collective oscillations," arXiv:2111.05401 (2021).
 
 + DUNE Collaboration, "Long-Baseline Neutrino Facility (LBNF) and Deep Underground Neutrino Experiment (DUNE) Conceptual Design Report," arXiv:1601.05471
 
