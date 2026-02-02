@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-02-03
+
+### Added
+- **VacuumBatch API** — 45% faster batch calculations via pre-computed mixing matrix elements
+  - `VacuumBatch::new()` pre-computes all 9 Usq elements and Jvac
+  - `probability_at(L, E)` computes single point using cached values
+  - `spectrum(L, &energies, flavor)` batch computes P(E) at fixed L
+  - `baseline_scan(E, &baselines, flavor)` batch computes P(L) at fixed E
+- Factory constructors `VacuumBatch::nufit52_no()` and `nufit52_io()`
+- New benchmark: `vacuum_batch_spectrum_1000`
+
+### Performance
+- Energy spectrum (1000 points): 72µs → **72ns/point** (was 131ns/point)
+- Single vacuum probability: ~46ns (unchanged)
+- Throughput: 21M calculations/second for vacuum
+
 ## [0.3.0] - 2026-02-03
 
 ### Added

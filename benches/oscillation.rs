@@ -6,9 +6,10 @@
 //! - Vacuum vs Matter calculations
 //! - Different N_Newton iterations
 //! - Batch calculations (energy spectrum)
+//! - VacuumBatch optimization
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use nufast::{VacuumParameters, MatterParameters, probability_vacuum_lbl, probability_matter_lbl};
+use nufast::{VacuumParameters, MatterParameters, VacuumBatch, probability_vacuum_lbl, probability_matter_lbl};
 use std::f64::consts::PI;
 
 /// Standard DUNE-like parameters for benchmarking
@@ -78,6 +79,17 @@ fn bench_energy_spectrum(c: &mut Criterion) {
                 let e = e_min + (e_max - e_min) * (i as f64 / n_points as f64);
                 let params = dune_vacuum_params(e);
                 black_box(probability_vacuum_lbl(&params));
+            }
+        })
+    });
+    
+    // Optimized batch version using pre-computed mixing elements
+    c.bench_function("vacuum_batch_spectrum_1000", |b| {
+        let batch = VacuumBatch::new(0.31, 0.02, 0.55, -0.7 * PI, 7.5e-5, 2.5e-3);
+        b.iter(|| {
+            for i in 0..n_points {
+                let e = e_min + (e_max - e_min) * (i as f64 / n_points as f64);
+                black_box(batch.probability_at(1300.0, e));
             }
         })
     });
