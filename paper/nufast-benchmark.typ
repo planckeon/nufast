@@ -71,6 +71,27 @@ We present `nufast`, a Rust port of this algorithm, designed to leverage Rust's
 memory safety guarantees and zero-cost abstractions while achieving performance
 comparable to or better than the original implementations.
 
+== Motivation
+
+This project originated from correspondence with Dr. Peter Denton in 2024
+regarding research opportunities in neutrino physics. During our discussion of
+computational methods for oscillation probability calculations, Dr. Denton
+recommended the NuFast algorithm as "the optimal algorithm" for this purpose,
+pointing to the preprint arXiv:2405.02400 and the reference implementations
+at #link("https://github.com/PeterDenton/NuFast").
+
+The author's background in computational physics—specifically neutrino
+oscillation phenomenology during undergraduate research—provided the foundation
+for understanding and implementing this algorithm. The decision to port NuFast
+to Rust was motivated by several factors:
+
+1. *Performance exploration*: Testing whether Rust's ownership model and LLVM
+   backend could match or exceed traditional numerical computing languages
+2. *Modern tooling*: Enabling integration with Rust-based physics tools and
+   WebAssembly deployment for browser applications
+3. *Educational visualization*: Creating "Imagining the Neutrino," an
+   interactive web-based tool for teaching neutrino oscillation concepts
+
 = Algorithm Overview
 
 The NuFast algorithm computes the full 3×3 oscillation probability matrix
@@ -246,9 +267,15 @@ attractive choice for future neutrino physics software development.
 
 #heading(numbering: none)[Acknowledgments]
 
-This work builds on the NuFast algorithm by Peter B. Denton and Stephen J.
-Parke. The original implementations are available at
+The author thanks Dr. Peter B. Denton (Brookhaven National Laboratory) for
+recommending the NuFast algorithm and providing guidance on optimal approaches
+to neutrino oscillation calculations. This work builds on the NuFast algorithm
+developed by Denton and Parke, with original implementations available at
 #link("https://github.com/PeterDenton/NuFast").
+
+The author also acknowledges the neutrino physics education received during
+undergraduate research at Krea University under Dr. Sushant Raut, which
+provided the theoretical foundation for this implementation.
 
 #heading(numbering: none)[Code Availability]
 
@@ -261,6 +288,8 @@ All benchmark implementations (Rust, C++, Fortran, Python) are included in the
 repository under `benchmarks/`.
 
 #heading(numbering: none)[References]
+
++ P. B. Denton, "Neutrino Oscillation Probabilities: A Compact Multi-algorithm Approach," arXiv:2405.02400 (2024).
 
 + P. B. Denton and S. J. Parke, "Simple and precise factorization of the Jarlskog invariant for neutrino oscillations in matter," Phys. Rev. D 100, 053004 (2019). arXiv:1902.07185
 

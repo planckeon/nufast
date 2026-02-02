@@ -2,7 +2,8 @@
 //!
 //! Fast and accurate three-flavor neutrino oscillation probabilities in vacuum and matter.
 //!
-//! This is a Rust port of [NuFast](https://github.com/PeterDenton/NuFast) by Peter Denton.
+//! This is a Rust port of [NuFast](https://github.com/PeterDenton/NuFast) by Peter Denton,
+//! based on the algorithm described in [arXiv:2405.02400](https://arxiv.org/abs/2405.02400).
 //!
 //! ## Features
 //!

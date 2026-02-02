@@ -170,9 +170,13 @@ nufast/
 
 ## References
 
-1. P.B. Denton, [NuFast: Fast and Accurate Neutrino Oscillation Probabilities](https://github.com/PeterDenton/NuFast)
-2. P.B. Denton, H. Minakata, S.J. Parke, "Compact Perturbative Expressions for Neutrino Oscillations in Matter" (2016)
+1. P.B. Denton, "Neutrino Oscillation Probabilities: A Compact Multi-algorithm Approach," [arXiv:2405.02400](https://arxiv.org/abs/2405.02400) (2024)
+2. P.B. Denton, [NuFast: Fast and Accurate Neutrino Oscillation Probabilities](https://github.com/PeterDenton/NuFast) - Original C++, Fortran, and Python implementations
 3. NuFit 5.2 (2022): [http://www.nu-fit.org](http://www.nu-fit.org)
+
+## Acknowledgments
+
+This Rust implementation was inspired by correspondence with Dr. Peter B. Denton, who recommended the NuFast algorithm as the optimal approach for efficient neutrino oscillation probability calculations.
 
 ## License
 
