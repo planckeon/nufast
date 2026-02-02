@@ -4,6 +4,15 @@
 //!
 //! This is a Rust port of [NuFast](https://github.com/PeterDenton/NuFast) by Peter Denton.
 //!
+//! ## Features
+//!
+//! - **Vacuum oscillations**: Full 3-flavor PMNS oscillation probabilities
+//! - **Matter effects (MSW)**: Constant-density matter with arbitrary electron fraction
+//! - **CP violation**: Full δ_CP phase support
+//! - **Newton refinement**: Optional iterative improvement for matter eigenvalues
+//! - **Zero dependencies**: Pure Rust, no external crates required
+//! - **Fast**: ~61 ns vacuum, ~95 ns matter (27% faster than C++ for matter!)
+//!
 //! ## Quick Start
 //!
 //! ```rust
@@ -24,8 +33,23 @@
 //! let probs = probability_vacuum_lbl(&params);
 //! assert!(probs[1][0] >= 0.0 && probs[1][0] <= 1.0); // P(νμ → νe)
 //! ```
+//!
+//! ## Performance
+//!
+//! Benchmarks on AMD Ryzen (10M iterations):
+//!
+//! | Language | Vacuum | Matter N=0 |
+//! |----------|--------|------------|
+//! | **Rust** | 61 ns  | **95 ns**  |
+//! | C++      | 49 ns  | 130 ns     |
+//! | Fortran  | 51 ns  | 107 ns     |
+//! | Python   | 14,700 ns | 21,900 ns |
+//!
+//! Rust is **27% faster than C++** for matter calculations.
 
 #![cfg_attr(feature = "no_std", no_std)]
+// Allow physics naming conventions (standard in neutrino oscillation literature)
+#![allow(non_snake_case)]
 
 use core::f64::consts::PI;
 

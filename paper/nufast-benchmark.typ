@@ -257,6 +257,9 @@ The `nufast` crate is open source under the MIT license:
 - GitHub: #link("https://github.com/planckeon/nufast")
 - Documentation: #link("https://docs.rs/nufast")
 
+All benchmark implementations (Rust, C++, Fortran, Python) are included in the
+repository under `benchmarks/`.
+
 #heading(numbering: none)[References]
 
 + P. B. Denton and S. J. Parke, "Simple and precise factorization of the Jarlskog invariant for neutrino oscillations in matter," Phys. Rev. D 100, 053004 (2019). arXiv:1902.07185
