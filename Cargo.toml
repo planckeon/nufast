@@ -1,12 +1,21 @@
 [package]
 name = "nufast"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Baalateja Kataru <baalateja@planckeon.org>"]
+description = "Fast and accurate three-flavor neutrino oscillation probabilities in vacuum and matter"
+license = "MIT"
+repository = "https://github.com/planckeon/nufast"
+documentation = "https://docs.rs/nufast"
+readme = "README.md"
+keywords = ["neutrino", "oscillation", "physics", "particle-physics", "msw"]
+categories = ["science", "simulation"]
 
 [dependencies]
 
-[[bench]]
-name = "example"
-harness = false
+[dev-dependencies]
+
+[features]
+default = []
+# Enable this for no_std support (no allocation)
+no_std = []
