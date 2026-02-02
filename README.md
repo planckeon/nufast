@@ -6,7 +6,9 @@
 
 Fast and accurate three-flavor neutrino oscillation probabilities in vacuum and matter.
 
-Rust port of [NuFast](https://github.com/PeterDenton/NuFast) by Peter Denton.
+Rust port of [NuFast](https://github.com/PeterDenton/NuFast) by Peter Denton, based on [arXiv:2405.02400](https://arxiv.org/abs/2405.02400).
+
+The original NuFast algorithm is used in production by major neutrino experiments including T2K (via MaCH3 framework) and JUNO, achieving order-of-magnitude speedups over previous methods.
 
 ## Features
 

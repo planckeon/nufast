@@ -64,8 +64,18 @@ experiments such as DUNE, Hyper-Kamiokande, and JUNO.
 
 The NuFast algorithm, developed by Denton and Parke [1], provides a
 computationally efficient method for calculating three-flavor oscillation
-probabilities including matter effects. The original implementation was
-provided in C++, Python, and Fortran.
+probabilities including matter effects. The algorithm uses the Eigenvalue-
+Eigenvector Identity (EEI) which only requires diagonalizing 2×2 matrices
+(solving quadratics rather than cubics for eigenvectors). An additional
+optimization is that the square root for the quadratic need not be computed
+to obtain probabilities. The algorithm also uses an initial eigenvalue
+approximation that propagates to other eigenvalues in an optimal order,
+with iterative Newton-Raphson refinement for arbitrary precision.
+
+NuFast has been adopted by major experimental collaborations: it is implemented
+in the MaCH3 framework (the primary reweighting code for T2K and other US/Japan
+experiments) and JUNO analysis pipelines, achieving "dramatic speed ups—close
+to an order of magnitude—over other 'optimized' algorithms" [1].
 
 We present `nufast`, a Rust port of this algorithm, designed to leverage Rust's
 memory safety guarantees and zero-cost abstractions while achieving performance
@@ -73,20 +83,28 @@ comparable to or better than the original implementations.
 
 == Motivation
 
-This project originated from correspondence with Dr. Peter Denton in 2024
-regarding research opportunities in neutrino physics. During our discussion of
-computational methods for oscillation probability calculations, Dr. Denton
-recommended the NuFast algorithm as "the optimal algorithm" for this purpose,
-pointing to the preprint arXiv:2405.02400 and the reference implementations
-at #link("https://github.com/PeterDenton/NuFast").
+This project originated from correspondence with Dr. Peter Denton in October
+2024 regarding research opportunities in neutrino physics. The author had
+previously worked on neutrino oscillation phenomenology during undergraduate
+research at Krea University under Dr. Sushant Raut, including attempts to
+apply the Eigenvalue-Eigenvector Identity (Rosetta identity) to derive novel
+oscillation probability expressions.
 
-The author's background in computational physics—specifically neutrino
-oscillation phenomenology during undergraduate research—provided the foundation
-for understanding and implementing this algorithm. The decision to port NuFast
-to Rust was motivated by several factors:
+During our discussion of computational methods, Dr. Denton recommended the
+NuFast algorithm, stating: "We recently put together what we think is the
+optimal algorithm" and pointing to the preprint arXiv:2405.02400 and the
+reference implementations at #link("https://github.com/PeterDenton/NuFast").
+He noted that NuFast had already been implemented into the MaCH3 framework
+(the primary reweighting code for both US and Japanese oscillation experiments
+including T2K) and JUNO analysis pipelines, achieving "dramatic speed ups
+(close to an order of magnitude) over other 'optimized' algorithms."
+
+The decision to port NuFast to Rust was motivated by several factors:
 
 1. *Performance exploration*: Testing whether Rust's ownership model and LLVM
-   backend could match or exceed traditional numerical computing languages
+   backend could match or exceed traditional numerical computing languages.
+   Dr. Denton reported ~100 ns per oscillation probability on his laptop;
+   our Rust implementation achieves ~95 ns for matter calculations.
 2. *Modern tooling*: Enabling integration with Rust-based physics tools and
    WebAssembly deployment for browser applications
 3. *Educational visualization*: Creating "Imagining the Neutrino," an
