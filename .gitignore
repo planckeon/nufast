@@ -1,1 +1,30 @@
+# Rust
 target/
+
+# Zig
+benchmarks/zig/zig-out/
+benchmarks/zig/.zig-cache/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Build artifacts
+*.o
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

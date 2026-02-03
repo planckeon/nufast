@@ -9,10 +9,12 @@
 //!
 //! - **Vacuum oscillations**: Full 3-flavor PMNS oscillation probabilities
 //! - **Matter effects (MSW)**: Constant-density matter with arbitrary electron fraction
+//! - **Anti-neutrino mode**: Sign-flipped δCP and matter potential
 //! - **CP violation**: Full δ_CP phase support
 //! - **Newton refinement**: Optional iterative improvement for matter eigenvalues
+//! - **Batch API**: `VacuumBatch` for 45% faster energy spectrum calculations
 //! - **Zero dependencies**: Pure Rust, no external crates required
-//! - **Fast**: ~61 ns vacuum, ~95 ns matter (27% faster than C++ for matter!)
+//! - **WebAssembly**: Zig implementation compiles to WASM (see `benchmarks/zig/wasm/`)
 //!
 //! ## Quick Start
 //!
@@ -42,12 +44,14 @@
 //!
 //! | Language | Vacuum | Matter N=0 |
 //! |----------|--------|------------|
+//! | Zig SIMD | 21 ns  | 37 ns      |
+//! | Zig      | 42 ns  | 108 ns     |
 //! | **Rust** | 61 ns  | **95 ns**  |
 //! | C++      | 49 ns  | 130 ns     |
-//! | Fortran  | 51 ns  | 107 ns     |
-//! | Python   | 14,700 ns | 21,900 ns |
+//! | WASM     | 80 ns  | 150 ns     |
 //!
 //! Rust is **27% faster than C++** for matter calculations.
+//! Zig SIMD achieves **48M vacuum/sec** throughput.
 
 #![cfg_attr(feature = "no_std", no_std)]
 // Allow physics naming conventions (standard in neutrino oscillation literature)

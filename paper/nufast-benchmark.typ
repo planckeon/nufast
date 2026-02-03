@@ -197,9 +197,10 @@ The complete chronology of the author's neutrino software development is:
     table.hline(stroke: 1pt),
     [May 2023], [`pytrino`], [Python/Cython library (undergrad thesis)],
     [Aug 2024], [`rustrino`], [First Rust prototype],
-    [Sep 2024], [`nufast`], [NuFast algorithm port (this work)],
+    [Sep 2024], [`nufast`], [NuFast algorithm port (Rust)],
     [Oct 2024], [`nosc`], [Two-flavor Rust implementation],
-    [Feb 2026], [`nufast-wasm`], [WebAssembly bindings for ITN],
+    [Feb 2026], [`nufast-zig`], [Zig port with SIMD support],
+    [Feb 2026], [`nufast-wasm`], [WebAssembly + TypeScript bindings],
     table.hline(stroke: 0.5pt),
   ),
   caption: [Chronology of the author's neutrino oscillation software.]
@@ -491,29 +492,72 @@ With WASM, the visualization computes 400-point energy spectra in real-time (~72
 == Future Directions
 
 - *PyO3 bindings*: Python interface via Rust FFI
-- *SIMD optimization*: Explicit vectorization for batch computations
 - *Variable density*: Piecewise-constant matter profiles for Earth models
+- *GPU acceleration*: CUDA/WebGPU kernels for massive parallelism
 
-= Conclusion
+== WebAssembly Deployment
 
-We have demonstrated that Rust provides an excellent platform for computational neutrino physics:
+The Zig implementation compiles to WebAssembly, enabling browser-based neutrino physics:
+
+```javascript
+import { loadNuFast } from '@nufast/wasm';
+
+const nufast = await loadNuFast();
+nufast.setDefaultParams();
+
+// Single-point calculation
+const Pme = nufast.vacuumPmeDefault(1300, 2.5);
+
+// Batch mode (2× faster)
+const energies = new Float64Array(1000);
+nufast.initVacuumBatch();
+const results = nufast.vacuumBatchPme(1300, energies);
+```
+
+WASM performance (Bun runtime):
 
 #figure(
   table(
-    columns: (1fr, 2fr),
+    columns: (1fr, 1fr, 1fr, 1fr),
+    inset: 8pt,
+    align: center,
+    stroke: (x: none, y: 0.5pt),
+    table.header(
+      [*Mode*], [*Single-point*], [*Batch (1000)*], [*Speedup*],
+    ),
+    table.hline(stroke: 1pt),
+    [Vacuum], [~100 ns], [~50 ns/point], [*2×*],
+    [Matter], [~150 ns], [~110 ns/point], [*1.4×*],
+    table.hline(stroke: 0.5pt),
+  ),
+  caption: [WebAssembly performance. Batch mode amortizes JS↔WASM call overhead.]
+)
+
+Key features:
+- *Tiny binary*: 13.6 KB (baseline), 13.4 KB (SIMD128)
+- *Zero dependencies*: No libc, pure math
+- *TypeScript bindings*: Full type definitions with `NuFast` class
+- *Batch API*: Pre-allocated 1024-point buffers for throughput
+
+= Conclusion
+
+We have demonstrated that modern systems languages provide excellent platforms for computational neutrino physics:
+
+#figure(
+  table(
+    columns: (1fr, 2.5fr),
     inset: 8pt,
     stroke: none,
-    [*Performance*], [27% faster than C++ for matter effects],
-    [*Throughput*], [10.5 M calculations/s (matter, N=0)],
-    [*Memory safety*], [Compile-time guarantees, zero runtime overhead],
-    [*WASM support*], [32 KB gzipped for browser deployment],
-    [*Batch API*], [VacuumBatch for 45% faster spectra],
-    [*Distribution*], [Published on crates.io],
+    [*Zig SIMD*], [48M vacuum/s, 27M matter/s (fastest)],
+    [*Rust*], [27% faster than C++ for matter effects],
+    [*WASM*], [13.6 KB binary, 20M vacuum/s batch mode],
+    [*Memory safety*], [Compile-time guarantees (Rust), explicit control (Zig)],
+    [*Distribution*], [crates.io (Rust), npm-ready (WASM)],
   ),
   caption: [Summary of nufast capabilities.]
 ) <tab:summary>
 
-The combination of performance, safety, and modern tooling makes Rust an attractive choice for future neutrino physics software development.
+The combination of performance, safety, and modern tooling—including WebAssembly for browser deployment—makes Rust and Zig attractive choices for future neutrino physics software development.
 
 #heading(numbering: none)[Acknowledgments]
 

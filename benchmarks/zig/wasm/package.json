@@ -1,0 +1,58 @@
+{
+  "name": "@nufast/wasm",
+  "version": "0.1.0",
+  "description": "Fast three-flavor neutrino oscillation probabilities (WebAssembly)",
+  "main": "nufast.js",
+  "module": "nufast.js",
+  "types": "nufast.d.ts",
+  "files": [
+    "nufast.js",
+    "nufast.d.ts",
+    "nufast.wasm",
+    "nufast-simd.wasm"
+  ],
+  "exports": {
+    ".": {
+      "types": "./nufast.d.ts",
+      "import": "./nufast.js",
+      "require": "./nufast.js"
+    },
+    "./wasm": "./nufast.wasm",
+    "./wasm-simd": "./nufast-simd.wasm"
+  },
+  "sideEffects": false,
+  "keywords": [
+    "neutrino",
+    "oscillation",
+    "physics",
+    "particle-physics",
+    "wasm",
+    "webassembly",
+    "nufast",
+    "dune",
+    "t2k",
+    "nova"
+  ],
+  "author": "Baala Kumaran",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/baalakumaran-kumaran/nufast.git",
+    "directory": "benchmarks/zig/wasm"
+  },
+  "homepage": "https://github.com/baalakumaran-kumaran/nufast#readme",
+  "bugs": {
+    "url": "https://github.com/baalakumaran-kumaran/nufast/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "cd .. && zig build wasm wasm-simd && cp .zig-cache/o/*/nufast*.wasm wasm/",
+    "test": "bun test-ts.ts",
+    "prepublishOnly": "npm run build"
+  }
+}

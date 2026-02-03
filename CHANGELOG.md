@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-02-03
+
+### Added (Zig WebAssembly)
+- **WASM build target** — `zig build wasm` produces 13.6 KB WASM binary
+- **WASM SIMD build** — `zig build wasm-simd` with SIMD128 support
+- **wasm_exports.zig** — C-ABI wrapper for JS interop
+- **Batch processing API** — `vacuum_batch_Pme()`, `matter_batch_Pme()` for 2× throughput
+- **TypeScript bindings** — Full type definitions in `nufast.ts`
+- **NPM package structure** — Ready for `@nufast/wasm` publication
+
+### WASM Performance
+- Single-point vacuum: ~80-100 ns/call, 10-12 M/sec
+- Single-point matter: ~120-170 ns/call, 6-8 M/sec
+- **Batch vacuum: ~50-60 ns/point, 17-20 M/sec** (2× speedup)
+- **Batch matter: ~100-120 ns/point, 8-10 M/sec**
+
+### WASM Features
+- Zero dependencies (pure math, no libc)
+- Pre-allocated buffers (1024 points max batch)
+- Global state for simplified JS↔WASM interop
+- `nufast.ts` class with `NuFast.vacuumBatchPme()` and friends
+
+### Files Added
+- `benchmarks/zig/WASM.md` — Full documentation
+- `benchmarks/zig/src/wasm_exports.zig` — WASM exports
+- `benchmarks/zig/wasm/nufast.wasm` — Baseline WASM
+- `benchmarks/zig/wasm/nufast-simd.wasm` — SIMD WASM
+- `benchmarks/zig/wasm/nufast.ts` — TypeScript API
+- `benchmarks/zig/wasm/nufast.js` — Bundled JavaScript
+- `benchmarks/zig/wasm/nufast.d.ts` — Type definitions
+- `benchmarks/zig/wasm/package.json` — NPM package
+- `benchmarks/zig/wasm/test.html` — Interactive browser demo
+- `benchmarks/zig/wasm/test-ts.ts` — TypeScript test suite
+
 ## [0.4.0] - 2026-02-03
 
 ### Added (Rust)

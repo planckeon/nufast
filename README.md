@@ -7,7 +7,7 @@
 
 Three-flavor neutrino oscillation probabilities in vacuum and constant-density matter.
 
-Implementations in Rust and Zig, based on NuFast by P.B. Denton ([arXiv:2405.02400](https://arxiv.org/abs/2405.02400)).
+Implementations in **Rust**, **Zig**, and **WebAssembly**, based on NuFast by P.B. Denton ([arXiv:2405.02400](https://arxiv.org/abs/2405.02400)).
 
 ## Overview
 
@@ -17,19 +17,17 @@ The original NuFast is used in production by T2K (via MaCH3) and JUNO.
 
 ## Implementations
 
-**Rust** (`src/lib.rs`) — published on crates.io as `nufast`
+| Platform | Location | Features |
+|----------|----------|----------|
+| **Rust** | `src/lib.rs` | crates.io, no_std, VacuumBatch |
+| **Zig** | `benchmarks/zig/` | SIMD, f32 mode, MatterBatch |
+| **WASM** | `benchmarks/zig/wasm/` | Browser, Node.js, TypeScript, batch API |
 
-**Zig** (`benchmarks/zig/src/nufast.zig`) — standalone module with SIMD extensions
-
-Both implementations support:
+All implementations support:
 - Vacuum oscillations (exact analytic)
 - Matter effects via the DMP approximation with optional Newton refinement
 - Anti-neutrino mode (sign-flipped δCP and matter potential)
 - Batch APIs for pre-computed mixing matrices
-
-The Zig implementation additionally provides:
-- SIMD vectorization (4×f64 or 8×f32 on AVX2)
-- f32 mode for increased throughput when reduced precision is acceptable
 
 ## Usage
 
@@ -37,7 +35,7 @@ The Zig implementation additionally provides:
 
 ```toml
 [dependencies]
-nufast = "0.4"
+nufast = "0.5"
 ```
 
 ```rust
@@ -75,11 +73,26 @@ var energies: nufast.F64Vec = .{ 1.0, 2.0, 3.0, 4.0 };
 const p_vec = nufast.vacuumProbabilitySimd(batch, 1300.0, energies);
 ```
 
+### WebAssembly (TypeScript)
+
+```typescript
+import { loadNuFast } from '@nufast/wasm';
+
+const nufast = await loadNuFast();
+const Pme = nufast.vacuumPmeDefault(1300, 2.5);
+console.log(`P(νμ → νe) = ${(Pme * 100).toFixed(2)}%`);
+
+// Batch mode (2× faster)
+const energies = new Float64Array([0.5, 1.0, 1.5, 2.0, 2.5]);
+nufast.initVacuumBatch();
+const results = nufast.vacuumBatchPme(1300, energies);
+```
+
 ## Benchmarks
 
 AMD Ryzen, WSL2, 10M iterations per measurement.
 
-### Scalar
+### Scalar Performance
 
 | Implementation | Vacuum | Matter (N=0) |
 |----------------|--------|--------------|
@@ -96,7 +109,16 @@ AMD Ryzen, WSL2, 10M iterations per measurement.
 | Vacuum | 44 ns/calc | 21 ns/calc |
 | Matter | 56 ns/calc | 37 ns/calc |
 
-Throughput with f32 SIMD: ~48M vacuum calculations/sec, ~27M matter calculations/sec.
+Throughput with f32 SIMD: **~48M vacuum/sec**, **~27M matter/sec**.
+
+### WebAssembly
+
+| Mode | Single-point | Batch (1000) |
+|------|-------------|--------------|
+| Vacuum | ~100 ns | ~50 ns/point |
+| Matter | ~150 ns | ~110 ns/point |
+
+Batch mode gives **2× speedup** by amortizing JS↔WASM overhead.
 
 ## Physics
 
@@ -123,13 +145,30 @@ The `N_Newton` parameter controls matter eigenvalue accuracy:
 ## Repository Structure
 
 ```
-src/           Rust implementation
+src/              Rust implementation
 benchmarks/
-  zig/         Zig implementation
-  cpp/         C++ (original NuFast)
-  fortran/     Fortran (original NuFast)
-  python/      Python (original NuFast)
-paper/         Benchmark methodology and results
+  zig/            Zig implementation + WASM
+    src/          Core physics + WASM exports
+    wasm/         WASM binaries, TypeScript, npm package
+  cpp/            C++ (original NuFast)
+  fortran/        Fortran (original NuFast)
+  python/         Python (original NuFast)
+paper/            Benchmark methodology and results
+```
+
+## Building WASM
+
+```bash
+cd benchmarks/zig
+
+# Build WASM (baseline + SIMD)
+zig build wasm wasm-simd
+
+# Copy to wasm/ directory
+cp .zig-cache/o/*/nufast*.wasm wasm/
+
+# Test
+cd wasm && bun test-ts.ts
 ```
 
 ## References

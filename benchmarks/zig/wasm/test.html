@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NuFast WASM Demo</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #0f0f23;
+            color: #ccc;
+        }
+        h1 { color: #00d9ff; margin-bottom: 5px; }
+        h2 { color: #00d9ff; margin-top: 30px; }
+        .subtitle { color: #666; margin-top: 0; }
+        .card {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .label { color: #00d9ff; font-weight: 500; }
+        .value { color: #00ff88; font-family: 'Fira Code', monospace; }
+        .error { color: #ff4757; }
+        button {
+            background: #00d9ff;
+            color: #0f0f23;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin: 5px 5px 5px 0;
+        }
+        button:hover { background: #00b8d4; }
+        button.secondary {
+            background: #333;
+            color: #ccc;
+        }
+        button.secondary:hover { background: #444; }
+        input {
+            background: #16213e;
+            color: #eee;
+            border: 1px solid #333;
+            padding: 8px 12px;
+            border-radius: 4px;
+            width: 100px;
+            margin: 5px;
+            font-family: 'Fira Code', monospace;
+        }
+        input:focus { border-color: #00d9ff; outline: none; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #333;
+            font-family: 'Fira Code', monospace;
+        }
+        th { background: #16213e; color: #00d9ff; }
+        td { background: #0f0f23; }
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 15px;
+        }
+        canvas { background: #16213e; border-radius: 4px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+        .stat { text-align: center; padding: 15px; }
+        .stat-value { font-size: 24px; color: #00ff88; font-family: 'Fira Code', monospace; }
+        .stat-label { font-size: 12px; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔬 NuFast WASM</h1>
+    <p class="subtitle">Three-flavor neutrino oscillation probabilities in WebAssembly</p>
+
+    <div id="loading" class="card">Loading WASM module...</div>
+
+    <div id="app" style="display: none;">
+        <h2>Parameters</h2>
+        <div class="card">
+            <p>
+                <span class="label">L (km):</span>
+                <input type="number" id="L" value="1300" step="100">
+                <span class="label">E (GeV):</span>
+                <input type="number" id="E" value="2.5" step="0.1">
+                <span class="label">ρ (g/cm³):</span>
+                <input type="number" id="rho" value="2.848" step="0.1">
+            </p>
+            <p>
+                <button onclick="calcVacuum()">Vacuum</button>
+                <button onclick="calcMatter()">Matter</button>
+                <button class="secondary" onclick="plotSpectrum()">Plot Spectrum</button>
+                <button class="secondary" onclick="benchmark()">Benchmark</button>
+            </p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3 style="margin-top:0; color: #00d9ff;">Result</h3>
+                <div id="output">Click a button to calculate</div>
+            </div>
+            <div class="card">
+                <h3 style="margin-top:0; color: #00d9ff;">Key Probabilities</h3>
+                <div class="grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div class="stat">
+                        <div class="stat-value" id="stat-pme">-</div>
+                        <div class="stat-label">P(νμ→νe)</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="stat-pmm">-</div>
+                        <div class="stat-label">P(νμ→νμ)</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="stat-pee">-</div>
+                        <div class="stat-label">P(νe→νe)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2>Probability Matrix</h2>
+        <div class="card">
+            <table id="matrix">
+                <thead>
+                    <tr><th></th><th>→ νe</th><th>→ νμ</th><th>→ ντ</th></tr>
+                </thead>
+                <tbody>
+                    <tr><th>νe →</th><td id="p00">-</td><td id="p01">-</td><td id="p02">-</td></tr>
+                    <tr><th>νμ →</th><td id="p10">-</td><td id="p11">-</td><td id="p12">-</td></tr>
+                    <tr><th>ντ →</th><td id="p20">-</td><td id="p21">-</td><td id="p22">-</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>Oscillation Spectrum</h2>
+        <div class="card">
+            <div class="chart-container">
+                <canvas id="chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let wasm = null;
+        let memory = null;
+
+        async function init() {
+            try {
+                const response = await fetch('nufast.wasm');
+                const bytes = await response.arrayBuffer();
+                const result = await WebAssembly.instantiate(bytes, { env: {} });
+                
+                wasm = result.instance.exports;
+                memory = wasm.memory;
+                wasm.set_default_params();
+                wasm.init_vacuum_batch();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('app').style.display = 'block';
+                
+                calcVacuum();
+                plotSpectrum();
+            } catch (e) {
+                document.getElementById('loading').innerHTML = `
+                    <span class="error">Error: ${e.message}</span>
+                `;
+            }
+        }
+
+        function readF64Array(ptr, count) {
+            return new Float64Array(memory.buffer, ptr, count);
+        }
+
+        function getParams() {
+            return {
+                L: parseFloat(document.getElementById('L').value),
+                E: parseFloat(document.getElementById('E').value),
+                rho: parseFloat(document.getElementById('rho').value),
+            };
+        }
+
+        function calcVacuum() {
+            const { L, E } = getParams();
+            const ptr = wasm.vacuum_probability(L, E);
+            const probs = Array.from(readF64Array(ptr, 9));
+            updateDisplay(probs, 'Vacuum', L, E);
+        }
+
+        function calcMatter() {
+            const { L, E, rho } = getParams();
+            wasm.set_matter_params(rho, 0.5, 0, false);
+            const ptr = wasm.matter_probability(L, E);
+            const probs = Array.from(readF64Array(ptr, 9));
+            updateDisplay(probs, `Matter (ρ=${rho})`, L, E);
+        }
+
+        function updateDisplay(probs, mode, L, E) {
+            document.getElementById('output').innerHTML = `
+                <p><span class="label">Mode:</span> <span class="value">${mode}</span></p>
+                <p><span class="label">L:</span> <span class="value">${L} km</span>  
+                   <span class="label">E:</span> <span class="value">${E} GeV</span></p>
+            `;
+
+            document.getElementById('stat-pme').textContent = (probs[3] * 100).toFixed(2) + '%';
+            document.getElementById('stat-pmm').textContent = (probs[4] * 100).toFixed(2) + '%';
+            document.getElementById('stat-pee').textContent = (probs[0] * 100).toFixed(2) + '%';
+
+            const ids = ['p00', 'p01', 'p02', 'p10', 'p11', 'p12', 'p20', 'p21', 'p22'];
+            for (let i = 0; i < 9; i++) {
+                document.getElementById(ids[i]).textContent = (probs[i] * 100).toFixed(4) + '%';
+            }
+        }
+
+        function plotSpectrum() {
+            const { L, rho } = getParams();
+            const nPoints = 200;
+            const Emin = 0.5, Emax = 8.0;
+
+            // Prepare energies
+            const energiesPtr = wasm.get_energies_ptr();
+            const energies = new Float64Array(memory.buffer, energiesPtr, nPoints);
+            for (let i = 0; i < nPoints; i++) {
+                energies[i] = Emin + (Emax - Emin) * i / (nPoints - 1);
+            }
+
+            // Calculate vacuum
+            wasm.init_vacuum_batch();
+            const vacPtr = wasm.vacuum_batch_Pme(L, nPoints);
+            const vacPme = Array.from(new Float64Array(memory.buffer, vacPtr, nPoints));
+
+            // Calculate matter
+            wasm.set_matter_params(rho, 0.5, 0, false);
+            wasm.init_matter_batch();
+            const matPtr = wasm.matter_batch_Pme(L, nPoints);
+            const matPme = Array.from(new Float64Array(memory.buffer, matPtr, nPoints));
+
+            drawChart(Array.from(energies), vacPme, matPme);
+        }
+
+        function drawChart(energies, vacPme, matPme) {
+            const canvas = document.getElementById('chart');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = 280;
+            
+            const W = canvas.width, H = canvas.height;
+            const margin = { top: 20, right: 20, bottom: 40, left: 60 };
+            const plotW = W - margin.left - margin.right;
+            const plotH = H - margin.top - margin.bottom;
+
+            ctx.fillStyle = '#16213e';
+            ctx.fillRect(0, 0, W, H);
+
+            // Find y-axis range
+            const allPme = [...vacPme, ...matPme];
+            const yMin = 0;
+            const yMax = Math.max(...allPme) * 1.1;
+            const xMin = energies[0];
+            const xMax = energies[energies.length - 1];
+
+            function toX(e) { return margin.left + (e - xMin) / (xMax - xMin) * plotW; }
+            function toY(p) { return margin.top + (1 - (p - yMin) / (yMax - yMin)) * plotH; }
+
+            // Grid
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 5; i++) {
+                const y = margin.top + i * plotH / 5;
+                ctx.beginPath();
+                ctx.moveTo(margin.left, y);
+                ctx.lineTo(W - margin.right, y);
+                ctx.stroke();
+            }
+
+            // Vacuum line
+            ctx.strokeStyle = '#00d9ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < energies.length; i++) {
+                const x = toX(energies[i]);
+                const y = toY(vacPme[i]);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Matter line
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.beginPath();
+            for (let i = 0; i < energies.length; i++) {
+                const x = toX(energies[i]);
+                const y = toY(matPme[i]);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#666';
+            ctx.font = '12px -apple-system, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Energy (GeV)', W / 2, H - 10);
+
+            ctx.save();
+            ctx.translate(15, H / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('P(νμ → νe)', 0, 0);
+            ctx.restore();
+
+            // Axis values
+            ctx.textAlign = 'center';
+            for (let e = 1; e <= 8; e++) {
+                ctx.fillText(e.toString(), toX(e), H - margin.bottom + 15);
+            }
+            ctx.textAlign = 'right';
+            for (let i = 0; i <= 5; i++) {
+                const p = yMin + (yMax - yMin) * (5 - i) / 5;
+                ctx.fillText((p * 100).toFixed(0) + '%', margin.left - 5, margin.top + i * plotH / 5 + 4);
+            }
+
+            // Legend
+            ctx.fillStyle = '#00d9ff';
+            ctx.fillRect(W - 120, 10, 15, 3);
+            ctx.fillStyle = '#ccc';
+            ctx.textAlign = 'left';
+            ctx.fillText('Vacuum', W - 100, 14);
+
+            ctx.fillStyle = '#ff6b6b';
+            ctx.fillRect(W - 120, 25, 15, 3);
+            ctx.fillStyle = '#ccc';
+            ctx.fillText('Matter', W - 100, 29);
+        }
+
+        function benchmark() {
+            const { L } = getParams();
+            const n = 1_000_000;
+
+            // Warmup
+            for (let i = 0; i < 1000; i++) {
+                wasm.vacuum_Pme_default(L, 0.5 + (i % 100) * 0.045);
+            }
+
+            // Single-point vacuum
+            let sum = 0;
+            const startVac = performance.now();
+            for (let i = 0; i < n; i++) {
+                sum += wasm.vacuum_Pme_default(L, 0.5 + (i % 1000) * 0.0045);
+            }
+            const elapsedVac = performance.now() - startVac;
+
+            // Batch vacuum
+            const batchSize = 1000;
+            const batchN = n / batchSize;
+            const energiesPtr = wasm.get_energies_ptr();
+            const energies = new Float64Array(memory.buffer, energiesPtr, batchSize);
+            for (let i = 0; i < batchSize; i++) {
+                energies[i] = 0.5 + i * 0.0045;
+            }
+
+            sum = 0;
+            wasm.init_vacuum_batch();
+            const startBatch = performance.now();
+            for (let i = 0; i < batchN; i++) {
+                const ptr = wasm.vacuum_batch_Pme(L, batchSize);
+                sum += new Float64Array(memory.buffer, ptr, 1)[0];
+            }
+            const elapsedBatch = performance.now() - startBatch;
+
+            const nsVac = (elapsedVac * 1_000_000) / n;
+            const nsBatch = (elapsedBatch * 1_000_000) / n;
+
+            document.getElementById('output').innerHTML = `
+                <p><span class="label">Benchmark Results</span> (${(n/1e6).toFixed(0)}M iterations)</p>
+                <p><span class="label">Single-point:</span> <span class="value">${nsVac.toFixed(0)} ns/call</span></p>
+                <p><span class="label">Batch (${batchSize}):</span> <span class="value">${nsBatch.toFixed(0)} ns/point</span></p>
+                <p><span class="label">Speedup:</span> <span class="value">${(nsVac / nsBatch).toFixed(2)}×</span></p>
+            `;
+        }
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            if (wasm) plotSpectrum();
+        });
+
+        init();
+    </script>
+</body>
+</html>

@@ -59,4 +59,60 @@ pub fn build(b: *std.Build) void {
     const run_simd = b.addRunArtifact(simd_bench);
     const simd_step = b.step("simd", "Run SIMD benchmarks");
     simd_step.dependOn(&run_simd.step);
+
+    // =============================================================================
+    // WASM Target
+    // =============================================================================
+    
+    // WASM library (exports C-ABI functions for JS interop)
+    const wasm_target = b.resolveTargetQuery(.{
+        .cpu_arch = .wasm32,
+        .os_tag = .freestanding,
+    });
+    
+    const wasm_mod = b.createModule(.{
+        .root_source_file = b.path("src/wasm_exports.zig"),
+        .target = wasm_target,
+        .optimize = .ReleaseSmall,
+    });
+
+    const wasm = b.addExecutable(.{
+        .name = "nufast",
+        .root_module = wasm_mod,
+    });
+    
+    // Important: export all symbols and don't use entry point
+    wasm.entry = .disabled;
+    wasm.rdynamic = true;
+    
+    b.installArtifact(wasm);
+
+    const wasm_step = b.step("wasm", "Build WASM library");
+    wasm_step.dependOn(&wasm.step);
+    
+    // WASM with SIMD support (for browsers with WASM SIMD)
+    const wasm_simd_target = b.resolveTargetQuery(.{
+        .cpu_arch = .wasm32,
+        .os_tag = .freestanding,
+        .cpu_features_add = std.Target.wasm.featureSet(&.{.simd128}),
+    });
+    
+    const wasm_simd_mod = b.createModule(.{
+        .root_source_file = b.path("src/wasm_exports.zig"),
+        .target = wasm_simd_target,
+        .optimize = .ReleaseSmall,
+    });
+
+    const wasm_simd = b.addExecutable(.{
+        .name = "nufast-simd",
+        .root_module = wasm_simd_mod,
+    });
+    
+    wasm_simd.entry = .disabled;
+    wasm_simd.rdynamic = true;
+    
+    b.installArtifact(wasm_simd);
+
+    const wasm_simd_step = b.step("wasm-simd", "Build WASM library with SIMD");
+    wasm_simd_step.dependOn(&wasm_simd.step);
 }

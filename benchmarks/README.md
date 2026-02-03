@@ -2,7 +2,7 @@
 
 This directory contains NuFast implementations and benchmarks in multiple languages:
 
-- **zig/** - Zig implementation (fastest, with SIMD support)
+- **zig/** - Zig implementation (fastest, with SIMD + WASM support)
 - **rust/** - Rust implementation (this crate, uses Criterion)
 - **cpp/** - C++ implementation (original NuFast)
 - **fortran/** - Fortran implementation (original NuFast)
@@ -11,18 +11,29 @@ This directory contains NuFast implementations and benchmarks in multiple langua
 ## Running Benchmarks
 
 ### Zig
+
 ```bash
 cd zig
 zig build bench  # Scalar benchmark
 zig build simd   # SIMD benchmark (f64 and f32 modes)
 ```
 
+### Zig WASM
+
+```bash
+cd zig
+zig build wasm wasm-simd
+cd wasm && bun test-ts.ts  # Run TypeScript test suite
+```
+
 ### Rust (Criterion)
+
 ```bash
 cd .. && cargo bench
 ```
 
 ### C++
+
 ```bash
 cd cpp
 g++ -O3 -march=native -o benchmark benchmark.cpp
@@ -30,6 +41,7 @@ g++ -O3 -march=native -o benchmark benchmark.cpp
 ```
 
 ### Fortran
+
 ```bash
 cd fortran
 gfortran -O3 -march=native -o benchmark benchmark.f90
@@ -37,6 +49,7 @@ gfortran -O3 -march=native -o benchmark benchmark.f90
 ```
 
 ### Python
+
 ```bash
 cd python
 python benchmark.py
@@ -61,13 +74,25 @@ python benchmark.py
 | Vacuum | 33 ns, 30 M/s | 30 ns, 33 M/s | **14 ns, 70 M/s** |
 | Matter N=0 | 77 ns, 13 M/s | 38 ns, 26 M/s | **26 ns, 39 M/s** |
 
+### Zig WASM Performance
+
+| Mode | Single-point | Batch (1000) | Speedup |
+|------|--------------|--------------|---------|
+| Vacuum | ~100 ns | ~50 ns/point | **2×** |
+| Matter | ~150 ns | ~110 ns/point | **1.4×** |
+
+WASM binaries:
+- `nufast.wasm`: 13.6 KB (baseline)
+- `nufast-simd.wasm`: 13.4 KB (with SIMD128)
+
 ### Key Findings
 
 1. **Zig is 2× faster than Rust** for vacuum calculations (31 ns vs 61 ns)
 2. **Zig SIMD f32 achieves 70 M/s** vacuum throughput (2.3× scalar speedup)
 3. **Zig SIMD matter achieves 3× speedup** over scalar with f32 mode
 4. **Rust is 27% faster than C++** for matter calculations
-5. **Python is ~600× slower than Zig**
+5. **WASM batch mode achieves 2× speedup** over single-point calls
+6. **Python is ~600× slower than Zig**
 
 ### Throughput Summary
 
@@ -76,12 +101,41 @@ python benchmark.py
 | **Zig SIMD f32** | **70 M/s** | **39 M/s** |
 | **Zig SIMD f64** | 33 M/s | 26 M/s |
 | Zig scalar | 32 M/s | 12 M/s |
+| **WASM batch** | **20 M/s** | **9 M/s** |
+| WASM single | 10 M/s | 6 M/s |
 | Rust     | 17.5 M/s | 10.5 M/s |
 | C++      | 20.3 M/s | 7.7 M/s |
 | Fortran  | 19.7 M/s | 9.4 M/s |
 | Python   | 0.07 M/s | 0.05 M/s |
 
-## New Features (v0.4.0)
+## New Features (v0.5.0)
+
+### WebAssembly Support
+
+Build WASM with:
+
+```bash
+cd zig
+zig build wasm        # Baseline (max compatibility)
+zig build wasm-simd   # With SIMD128 (faster, modern browsers)
+```
+
+Use from TypeScript:
+
+```typescript
+import { loadNuFast } from '@nufast/wasm';
+
+const nufast = await loadNuFast();
+nufast.setDefaultParams();
+
+// Single point
+const Pme = nufast.vacuumPmeDefault(1300, 2.5);
+
+// Batch (2× faster)
+const energies = new Float64Array(1000);
+nufast.initVacuumBatch();
+const results = nufast.vacuumBatchPme(1300, energies);
+```
 
 ### Anti-Neutrino Mode
 
@@ -140,3 +194,4 @@ const matter_batch = nufast.MatterBatch.init(matter_params);
 - All benchmarks use NuFIT 5.2 parameters
 - SIMD lane count depends on CPU (4×f64 / 8×f32 on AVX2)
 - f32 mode provides ~7 digits of precision (sufficient for most applications)
+- WASM batch mode pre-allocates 1024-point buffers
