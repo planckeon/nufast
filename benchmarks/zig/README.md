@@ -32,7 +32,7 @@ zig fetch --save git+https://github.com/planckeon/nufast.git#main
 Or with a specific version:
 
 ```bash
-zig fetch --save git+https://github.com/planckeon/nufast.git#v0.4.0
+zig fetch --save git+https://github.com/planckeon/nufast.git#v0.5.0
 ```
 
 To save with a custom dependency name:
@@ -215,7 +215,7 @@ zig build docs
 
 The documentation will be generated in the `docs/` folder. Open `docs/index.html` in a browser to view.
 
-Tests covering:
+153 tests covering:
 - Probability conservation (unitarity)
 - Batch/SIMD consistency with scalar
 - CPT theorem for anti-neutrinos

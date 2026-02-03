@@ -506,11 +506,60 @@ Features include:
 
 With WASM, the visualization computes 400-point energy spectra in real-time (~72 μs with VacuumBatch) as users adjust parameters.
 
+== Advanced Features (Zig v0.5.0)
+
+The Zig implementation includes several advanced physics capabilities:
+
+=== PREM Earth Model
+
+Variable density calculations using the Preliminary Reference Earth Model (PREM):
+
+```zig
+// Automatic path integration through Earth layers
+const probs = nufast.matterProbabilityPrem(params, 1300.0, 2.5);
+
+// Get average density for a baseline
+const avg = nufast.getAverageDensityAlongPath(1300.0);
+```
+
+The PREM implementation includes 6 layers (inner core, outer core, lower mantle, transition zone, upper mantle, crust) with appropriate densities and electron fractions. For a given baseline, the code calculates the path-weighted average density along the neutrino trajectory.
+
+=== Non-Standard Interactions (NSI)
+
+Support for new physics via NSI parameters:
+
+```zig
+const nsi = @import("nsi");
+
+var nsi_params = nsi.NsiParams{
+    .eps_ee = 0.1,      // Diagonal: enhanced electron potential
+    .eps_em = nsi.Complex.init(0.03, 0.01),  // Complex off-diagonal
+};
+
+const probs = nsi.matterProbabilityNsi(matter_nsi, 1300.0, 2.5);
+```
+
+NSI modifies the matter Hamiltonian: $H_"matter" -> A times ("diag"(1,0,0) + epsilon)$ where $epsilon$ is a Hermitian matrix. The implementation is accurate for $|epsilon| lt.eq 0.3$ (typical experimental bounds).
+
+=== Sterile Neutrinos (3+1 Model)
+
+Exact 4-flavor vacuum oscillations for short-baseline anomalies:
+
+```zig
+const sterile = @import("sterile");
+
+const params = sterile.SterileParams.default;
+const probs = sterile.sterileProbabilityVacuum(params, 500.0, 0.03);
+// 4×4 probability matrix with active + sterile flavors
+```
+
+The sterile module implements the full 4×4 PMNS matrix with additional mixing angles ($theta_(14), theta_(24), theta_(34)$) and CP phases ($delta_(14), delta_(24)$). Note that the NuFast approximation does not extend to 4-flavor matter effects—the sterile module uses exact vacuum oscillation formulas.
+
 == Future Directions
 
-- *PyO3 bindings*: Python interface via Rust FFI
-- *Variable density*: Piecewise-constant matter profiles for Earth models
 - *GPU acceleration*: CUDA/WebGPU kernels for massive parallelism
+- *4-flavor matter*: Exact numerical diagonalization for sterile + matter
+- *ARM benchmarks*: Apple Silicon performance characterization
 
 == WebAssembly Deployment
 
