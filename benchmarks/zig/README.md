@@ -1,123 +1,53 @@
-# NuFast Zig Implementation
+# nufast (Zig)
 
-Fast three-flavor neutrino oscillation probabilities in Zig.
+Three-flavor neutrino oscillation probabilities in vacuum and constant-density matter.
+
+Zig implementation of the NuFast algorithm by P.B. Denton ([arXiv:2405.02400](https://arxiv.org/abs/2405.02400)).
 
 ## Features
 
-- **Vacuum oscillations**: Full 3-flavor PMNS probabilities
-- **Matter effects (MSW)**: Constant-density matter with arbitrary electron fraction
-- **SIMD acceleration**: Vectorized calculations for multiple energies
-  - f64: 4 lanes (AVX2) 
-  - f32: 8 lanes (2× throughput, reduced precision)
-- **Batch APIs**: Pre-computed mixing for repeated calculations
-- **Anti-neutrino mode**: Sign-flipped matter potential and δCP
-- **Zero allocations**: All computation on the stack
+- Vacuum oscillations (exact analytic)
+- Matter effects via DMP approximation with Newton refinement
+- Anti-neutrino mode (sign-flipped δCP and matter potential)
+- SIMD vectorization (4×f64 or 8×f32 on AVX2)
+- f32 mode for increased throughput
+- Batch APIs for pre-computed mixing matrices
+- Zero dependencies (std only)
+- Zero heap allocations in hot paths
 
-## Quick Start
+## Requirements
 
-```zig
-const nufast = @import("nufast");
+- Zig 0.15.0 or later
 
-// Vacuum oscillation
-const params = nufast.VacuumParams.default;
-const probs = nufast.vacuumProbability(params, 1300.0, 2.5);
-// probs[1][0] = P(νμ → νe)
+## Installation
 
-// Batch calculations (pre-computed mixing matrix)
-const batch = nufast.VacuumBatch.init(params);
-for (energies) |E| {
-    const p = batch.probabilityAt(1300.0, E);
-}
-
-// SIMD: 4 energies simultaneously (f64)
-var E_vec: nufast.F64Vec = .{ 1.0, 2.0, 3.0, 4.0 };
-const p_vec = nufast.vacuumProbabilitySimd(batch, 1300.0, E_vec);
-
-// f32 SIMD: 8 energies simultaneously (2× throughput)
-const batch_f32 = nufast.VacuumBatchF32.fromF64(batch);
-var E_vec_f32: nufast.F32Vec = .{ 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5 };
-const p_vec_f32 = nufast.vacuumProbabilitySimdF32(batch_f32, 1300.0, E_vec_f32);
-```
-
-## Anti-Neutrino Mode
-
-```zig
-// Set antineutrino = true to flip sign of matter potential and δCP
-var matter_params = nufast.MatterParams.default;
-matter_params.antineutrino = true;
-const nubar_probs = nufast.matterProbability(matter_params, 1300.0, 2.5);
-```
-
-## Matter Batch API
-
-For repeated calculations at constant density (e.g., energy spectra):
-
-```zig
-const matter_params = nufast.MatterParams{
-    .vacuum = nufast.VacuumParams.default,
-    .rho = 2.848,
-    .Ye = 0.5,
-    .n_newton = 0,
-};
-const matter_batch = nufast.MatterBatch.init(matter_params);
-
-// 30-40% faster than repeated matterProbability calls
-for (energies) |E| {
-    const p = matter_batch.probabilityAt(1300.0, E);
-}
-
-// SIMD matter calculation
-const p_simd = nufast.matterProbabilitySimd(matter_batch, 1300.0, E_vec);
-```
-
-## Performance
-
-Benchmarks on AMD Ryzen (WSL2), 10M iterations:
-
-### Scalar Performance
-
-| Mode | Time/calc | Throughput |
-|------|-----------|------------|
-| Vacuum (f64) | 31 ns | 32 M/s |
-| Matter N=0 (f64) | 85 ns | 12 M/s |
-| Matter N=1 (f64) | 98 ns | 10 M/s |
-
-### SIMD Performance (per-calculation, amortized)
-
-| Mode | f64 (4 lanes) | f32 (8 lanes) |
-|------|---------------|---------------|
-| Vacuum | 30 ns → 33 M/s | **14 ns → 70 M/s** |
-| Matter N=0 | 38 ns → 26 M/s | **26 ns → 39 M/s** |
-
-**Key findings:**
-- f32 SIMD achieves **70 M/s** vacuum throughput (2× lanes, 2.3× speedup)
-- f32 SIMD achieves **39 M/s** matter throughput (3× faster than scalar)
-- SIMD provides near-linear speedup for embarrassingly parallel energy spectra
-
-## Building
-
-Requires Zig 0.15.2 or later.
+### Using `zig fetch` (recommended)
 
 ```bash
-# Run tests
-zig build test
-
-# Run scalar benchmark
-zig build bench
-
-# Run SIMD benchmark
-zig build simd
+zig fetch --save git+https://github.com/planckeon/nufast.git#main
 ```
 
-## Using as a Dependency
+Or with a specific version:
 
-Add to your `build.zig.zon`:
+```bash
+zig fetch --save git+https://github.com/planckeon/nufast.git#v0.4.0
+```
+
+To save with a custom dependency name:
+
+```bash
+zig fetch --save=nufast git+https://github.com/planckeon/nufast.git
+```
+
+### Manual configuration
+
+Add to `build.zig.zon`:
 
 ```zig
 .dependencies = .{
     .nufast = .{
-        .url = "https://github.com/planckeon/nufast/archive/refs/tags/v0.4.0.tar.gz",
-        .hash = "...",
+        .url = "git+https://github.com/planckeon/nufast.git",
+        .hash = "...", // Run `zig build` to get the correct hash
     },
 },
 ```
@@ -132,27 +62,119 @@ const nufast = b.dependency("nufast", .{
 exe.root_module.addImport("nufast", nufast.module("nufast"));
 ```
 
-## API Reference
+## Usage
 
-### Types
+### Vacuum oscillations
 
-- `VacuumParams` - Oscillation parameters for vacuum
-- `MatterParams` - Parameters including matter density
-- `VacuumBatch` - Pre-computed vacuum mixing (f64)
-- `MatterBatch` - Pre-computed matter mixing (f64)
-- `VacuumBatchF32` - Pre-computed vacuum mixing (f32)
-- `MatterBatchF32` - Pre-computed matter mixing (f32)
-- `F64Vec` - SIMD vector of f64 (4 lanes on AVX2)
-- `F32Vec` - SIMD vector of f32 (8 lanes on AVX2)
+```zig
+const nufast = @import("nufast");
 
-### Functions
+const params = nufast.VacuumParams.default;
+const probs = nufast.vacuumProbability(params, 1300.0, 2.5);
+// probs[1][0] = P(νμ → νe)
+```
 
-- `vacuumProbability(params, L, E)` - Single vacuum calculation
-- `matterProbability(params, L, E)` - Single matter calculation
-- `vacuumProbabilitySimd(batch, L, energies)` - SIMD vacuum (f64)
-- `matterProbabilitySimd(batch, L, energies)` - SIMD matter (f64)
-- `vacuumProbabilitySimdF32(batch, L, energies)` - SIMD vacuum (f32)
-- `matterProbabilitySimdF32(batch, L, energies)` - SIMD matter (f32)
+### Matter oscillations
+
+```zig
+const matter = nufast.MatterParams{
+    .vacuum = nufast.VacuumParams.default,
+    .rho = 2.848,  // g/cm³
+    .Ye = 0.5,
+    .n_newton = 0, // 0-3, higher = more accurate
+};
+const probs = nufast.matterProbability(matter, 1300.0, 2.5);
+```
+
+### Batch API (pre-computed mixing)
+
+```zig
+// Pre-compute mixing matrix for repeated calculations
+const batch = nufast.VacuumBatch.init(params);
+for (energies) |E| {
+    const p = batch.probabilityAt(1300.0, E);
+}
+
+// Matter batch
+const matter_batch = nufast.MatterBatch.init(matter_params);
+```
+
+### SIMD (vectorized)
+
+```zig
+// f64 SIMD: 4 energies at once
+var E_vec: nufast.F64Vec = .{ 1.0, 2.0, 3.0, 4.0 };
+const p_vec = nufast.vacuumProbabilitySimd(batch, 1300.0, E_vec);
+
+// f32 SIMD: 8 energies at once (2× throughput)
+const batch_f32 = nufast.VacuumBatchF32.fromF64(batch);
+var E_f32: nufast.F32Vec = .{ 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5 };
+const p_f32 = nufast.vacuumProbabilitySimdF32(batch_f32, 1300.0, E_f32);
+
+// SIMD matter
+const mat_probs = nufast.matterProbabilitySimd(matter_batch, 1300.0, E_vec);
+```
+
+### Anti-neutrino mode
+
+```zig
+var params = nufast.MatterParams.default;
+params.antineutrino = true;
+const probs = nufast.matterProbability(params, 1300.0, 2.5);
+```
+
+## Benchmarks
+
+AMD Ryzen, WSL2, 10M iterations.
+
+### Scalar
+
+| Mode | Time | Throughput |
+|------|------|------------|
+| Vacuum | 42 ns | 24 M/s |
+| Matter N=0 | 108 ns | 9 M/s |
+
+### SIMD
+
+| Mode | f64 (4 lanes) | f32 (8 lanes) |
+|------|---------------|---------------|
+| Vacuum | 44 ns/calc | 21 ns/calc, 48 M/s |
+| Matter | 56 ns/calc | 37 ns/calc, 27 M/s |
+
+## Physics
+
+Default parameters: NuFit 5.2 (2022) normal ordering.
+
+The probability matrix `probs[α][β]` gives P(ν_α → ν_β):
+
+```
+        e       μ       τ
+    ┌───────────────────────┐
+e   │ P_ee    P_eμ    P_eτ  │
+μ   │ P_μe    P_μμ    P_μτ  │
+τ   │ P_τe    P_τμ    P_ττ  │
+    └───────────────────────┘
+```
+
+`n_newton` controls matter eigenvalue accuracy:
+- 0: DMP approximation (~0.1%)
+- 1: One Newton iteration (~0.01%)
+- 2-3: Machine precision
+
+Values > 3 are clamped to 3.
+
+## Tests
+
+```bash
+zig build test
+```
+
+22 tests covering:
+- Probability conservation (unitarity)
+- Batch/SIMD consistency with scalar
+- CPT theorem for anti-neutrinos
+- Cross-validation against original NuFast
+- Edge cases (L→0, high E, zero θ₁₃, etc.)
 
 ## License
 

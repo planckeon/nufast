@@ -69,6 +69,9 @@ pub const VacuumParams = struct {
     }
 };
 
+/// Maximum allowed Newton iterations (for numerical stability)
+pub const MAX_NEWTON_ITERATIONS: u8 = 3;
+
 /// Oscillation parameters for matter calculations
 pub const MatterParams = struct {
     /// Vacuum parameters
@@ -77,7 +80,7 @@ pub const MatterParams = struct {
     rho: f64,
     /// Electron fraction
     Ye: f64,
-    /// Newton-Raphson iterations (0-3)
+    /// Newton-Raphson iterations (0-3, clamped to MAX_NEWTON_ITERATIONS)
     n_newton: u8,
     /// Anti-neutrino mode (flips sign of matter potential and δCP)
     antineutrino: bool = false,
@@ -89,6 +92,11 @@ pub const MatterParams = struct {
         .Ye = 0.5,
         .n_newton = 0,
     };
+    
+    /// Get clamped Newton iteration count (0-3)
+    pub fn clampedNewton(self: MatterParams) u8 {
+        return @min(self.n_newton, MAX_NEWTON_ITERATIONS);
+    }
 
     /// Get effective delta (sign-flipped for antineutrinos)
     pub fn effectiveDelta(self: MatterParams) f64 {
@@ -286,7 +294,7 @@ pub const MatterBatch = struct {
             .Tmm_base = Tmm_base,
             .A_sum = A_sum,
             .Ye_rho = params.Ye * params.rho,
-            .n_newton = params.n_newton,
+            .n_newton = params.clampedNewton(),
             .matter_sign = matter_sign,
         };
     }
@@ -427,9 +435,10 @@ pub fn matterProbability(params: MatterParams, L: f64, E: f64) ProbabilityMatrix
 
     const B = Tmm_base + Amatter * See;
 
-    // Newton-Raphson iterations
+    // Newton-Raphson iterations (clamped)
+    const n_newton_clamped = params.clampedNewton();
     var i: u8 = 0;
-    while (i < params.n_newton) : (i += 1) {
+    while (i < n_newton_clamped) : (i += 1) {
         lambda3 = (lambda3 * lambda3 * (lambda3 - A) + C) / (lambda3 * (2.0 * lambda3 - A) + B);
     }
 
@@ -1137,3 +1146,190 @@ test "antineutrino matter mode" {
     const diff = @abs(nu_probs[1][0] - nubar_probs[1][0]);
     try std.testing.expect(diff > 0.01); // Should be noticeably different
 }
+
+// =============================================================================
+// Cross-Validation Tests (against original NuFast Python implementation)
+// =============================================================================
+
+test "cross-validation: T2K-like vacuum (L=295 km, E=0.6 GeV)" {
+    // Reference values from original NuFast Python implementation
+    const params = VacuumParams.default;
+    const probs = vacuumProbability(params, 295.0, 0.6);
+
+    // Expected: Pee = 0.912467..., Pme = 0.057131..., Pmm = 0.010845...
+    // These are from the original NuFast algorithm
+    try std.testing.expectApproxEqAbs(probs[0][0], 0.9124677609000021, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][0], 0.05713195504421340, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][1], 0.01084557487519722, 1e-10);
+}
+
+test "cross-validation: DUNE-like vacuum (L=1300 km, E=2.5 GeV)" {
+    const params = VacuumParams.default;
+    const probs = vacuumProbability(params, 1300.0, 2.5);
+
+    // Expected from original NuFast
+    try std.testing.expectApproxEqAbs(probs[0][0], 0.9120570461953496, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][0], 0.05859330228592972, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][1], 0.004726368319321272, 1e-10);
+}
+
+test "cross-validation: inverted ordering (L=1300 km, E=2.5 GeV)" {
+    var params = VacuumParams.default;
+    params.Dmsq31 = -2.498e-3; // Inverted ordering
+
+    const probs = vacuumProbability(params, 1300.0, 2.5);
+
+    // Expected from original NuFast
+    try std.testing.expectApproxEqAbs(probs[0][0], 0.9126759218475518, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][0], 0.05722581249769201, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][1], 0.01733314218311000, 1e-10);
+}
+
+// =============================================================================
+// Edge Case Tests
+// =============================================================================
+
+test "edge case: near-zero baseline (L ≈ 0)" {
+    const params = VacuumParams.default;
+    const probs = vacuumProbability(params, 0.001, 2.5);
+
+    // At L→0, should approach identity: P_αα → 1, P_αβ → 0
+    try std.testing.expectApproxEqAbs(probs[0][0], 1.0, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][1], 1.0, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[2][2], 1.0, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][0], 0.0, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[0][1], 0.0, 1e-10);
+}
+
+test "edge case: very high energy (E = 100 GeV)" {
+    const params = VacuumParams.default;
+    const probs = vacuumProbability(params, 1300.0, 100.0);
+
+    // At high energy, oscillations are suppressed (L/E small)
+    // Should approach identity
+    try std.testing.expectApproxEqAbs(probs[0][0], 0.9998609501566286, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][0], 6.845956204204167e-05, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][1], 0.9984513776819962, 1e-10);
+}
+
+test "edge case: zero theta13 (s13sq = 0)" {
+    var params = VacuumParams.default;
+    params.s13sq = 0.0;
+
+    const probs = vacuumProbability(params, 1300.0, 2.5);
+
+    // With θ₁₃ = 0, there's no νμ → νe appearance at atmospheric Δm²
+    // (only solar oscillations contribute)
+    // All probabilities should still be in [0, 1]
+    for (probs) |row| {
+        for (row) |p| {
+            try std.testing.expect(p >= -1e-10 and p <= 1.0 + 1e-10);
+        }
+    }
+    // Pee and Pmm should sum rows/cols to 1
+    var row_sum: f64 = 0;
+    for (probs[0]) |p| row_sum += p;
+    try std.testing.expectApproxEqAbs(row_sum, 1.0, 1e-10);
+}
+
+test "edge case: maximal mixing (s23sq = 0.5)" {
+    var params = VacuumParams.default;
+    params.s23sq = 0.5; // Exactly maximal
+
+    const probs = vacuumProbability(params, 1300.0, 2.5);
+
+    // Should still have valid probabilities
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| {
+            try std.testing.expect(p >= -1e-10 and p <= 1.0 + 1e-10);
+            sum += p;
+        }
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+}
+
+test "edge case: delta = 0 (no CP violation)" {
+    var params = VacuumParams.default;
+    params.delta = 0.0;
+
+    const probs = vacuumProbability(params, 1300.0, 2.5);
+
+    // With δ = 0, Pme should equal Pem (T symmetry)
+    try std.testing.expectApproxEqAbs(probs[1][0], probs[0][1], 1e-10);
+}
+
+test "edge case: delta = pi (maximal CP violation for this phase)" {
+    var params = VacuumParams.default;
+    params.delta = math.pi;
+
+    const probs = vacuumProbability(params, 1300.0, 2.5);
+
+    // Should still have valid probabilities
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| sum += p;
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+}
+
+test "n_newton clamping: values > 3 are clamped" {
+    var params = MatterParams.default;
+    params.n_newton = 100; // Way over the limit
+
+    // Should be clamped to MAX_NEWTON_ITERATIONS (3)
+    try std.testing.expectEqual(params.clampedNewton(), MAX_NEWTON_ITERATIONS);
+
+    // Should still compute valid probabilities
+    const probs = matterProbability(params, 1300.0, 2.5);
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| sum += p;
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+}
+
+test "matter: Newton iterations improve accuracy" {
+    const L: f64 = 1300.0;
+    const E: f64 = 2.5;
+
+    // Get results for different Newton iteration counts
+    var params_n0 = MatterParams.default;
+    params_n0.n_newton = 0;
+    const probs_n0 = matterProbability(params_n0, L, E);
+
+    var params_n1 = MatterParams.default;
+    params_n1.n_newton = 1;
+    const probs_n1 = matterProbability(params_n1, L, E);
+
+    var params_n2 = MatterParams.default;
+    params_n2.n_newton = 2;
+    const probs_n2 = matterProbability(params_n2, L, E);
+
+    // N=1 and N=2 should be closer to each other than N=0 and N=1
+    // (Newton iterations converge)
+    const diff_01 = @abs(probs_n0[1][0] - probs_n1[1][0]);
+    const diff_12 = @abs(probs_n1[1][0] - probs_n2[1][0]);
+
+    try std.testing.expect(diff_12 < diff_01);
+}
+
+test "matter: zero density equals vacuum" {
+    const L: f64 = 1300.0;
+    const E: f64 = 2.5;
+
+    const vac_params = VacuumParams.default;
+    const vac_probs = vacuumProbability(vac_params, L, E);
+
+    var mat_params = MatterParams.default;
+    mat_params.rho = 0.0; // Zero density
+    const mat_probs = matterProbability(mat_params, L, E);
+
+    // With ρ = 0, matter should equal vacuum
+    for (0..3) |i| {
+        for (0..3) |j| {
+            try std.testing.expectApproxEqAbs(vac_probs[i][j], mat_probs[i][j], 1e-10);
+        }
+    }
+}
+
