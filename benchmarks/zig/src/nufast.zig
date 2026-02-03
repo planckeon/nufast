@@ -1333,3 +1333,43 @@ test "matter: zero density equals vacuum" {
     }
 }
 
+// =============================================================================
+// Cross-Validation Tests: MATTER (against original NuFast Python)
+// =============================================================================
+
+test "cross-validation: DUNE-like matter (L=1300 km, E=2.5 GeV, rho=2.848)" {
+    // Reference values from original NuFast Python implementation
+    // Parameters: NuFit 5.2 (s12sq=0.307, s13sq=0.0220, s23sq=0.546, delta=-0.7*pi)
+    // Dmsq21=7.53e-5, Dmsq31=2.453e-3, rho=2.848 g/cm³, Ye=0.5, N_Newton=0
+    const params = MatterParams.default;
+    const probs = matterProbability(params, 1300.0, 2.5);
+
+    // Python reference:
+    //   P(e->e)  = 8.727627013058699e-01
+    //   P(e->mu) = 5.731530983046839e-02
+    //   P(mu->e) = 8.249293182552475e-02
+    //   P(mu->mu)= 5.260049583365356e-02
+    try std.testing.expectApproxEqAbs(probs[0][0], 8.727627013058699e-01, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[0][1], 5.731530983046839e-02, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][0], 8.249293182552475e-02, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][1], 5.260049583365356e-02, 1e-10);
+}
+
+test "cross-validation: T2K-like matter (L=295 km, E=0.6 GeV, rho=2.6)" {
+    // Reference values from original NuFast Python implementation
+    // Parameters: NuFit 5.2, rho=2.6 g/cm³, Ye=0.5, N_Newton=0
+    var params = MatterParams.default;
+    params.rho = 2.6;
+    const probs = matterProbability(params, 295.0, 0.6);
+
+    // Python reference:
+    //   P(e->e)  = 9.051251298911471e-01
+    //   P(e->mu) = 4.191271845601963e-02
+    //   P(mu->e) = 6.284592128957496e-02
+    //   P(mu->mu)= 1.004304479827633e-02
+    try std.testing.expectApproxEqAbs(probs[0][0], 9.051251298911471e-01, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[0][1], 4.191271845601963e-02, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][0], 6.284592128957496e-02, 1e-10);
+    try std.testing.expectApproxEqAbs(probs[1][1], 1.004304479827633e-02, 1e-10);
+}
+
