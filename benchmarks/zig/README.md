@@ -169,6 +169,16 @@ Values > 3 are clamped to 3.
 zig build test
 ```
 
+## Documentation
+
+Generate API documentation:
+
+```bash
+zig build docs
+```
+
+The documentation will be generated in the `docs/` folder. Open `docs/index.html` in a browser to view.
+
 22 tests covering:
 - Probability conservation (unitarity)
 - Batch/SIMD consistency with scalar

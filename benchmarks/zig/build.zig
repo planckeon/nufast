@@ -115,4 +115,26 @@ pub fn build(b: *std.Build) void {
 
     const wasm_simd_step = b.step("wasm-simd", "Build WASM library with SIMD");
     wasm_simd_step.dependOn(&wasm_simd.step);
+
+    // =============================================================================
+    // Documentation
+    // =============================================================================
+
+    const docs = b.addObject(.{
+        .name = "nufast",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/nufast.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
+    const install_docs = b.addInstallDirectory(.{
+        .source_dir = docs.getEmittedDocs(),
+        .install_dir = .{ .custom = "../docs" },
+        .install_subdir = "",
+    });
+
+    const docs_step = b.step("docs", "Generate API documentation");
+    docs_step.dependOn(&install_docs.step);
 }
