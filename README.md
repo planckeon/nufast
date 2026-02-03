@@ -46,9 +46,8 @@ All implementations support:
 
 ### Rust
 
-```toml
-[dependencies]
-nufast = "0.5"
+```bash
+cargo add nufast
 ```
 
 ```rust
