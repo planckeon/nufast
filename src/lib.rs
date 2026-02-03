@@ -29,6 +29,7 @@
 //!     Dmsq31: 2.517e-3,
 //!     L: 295.0,
 //!     E: 0.6,
+//!     antineutrino: false,
 //! };
 //!
 //! let probs = probability_vacuum_lbl(&params);
@@ -88,6 +89,8 @@ pub struct VacuumParameters {
     pub L: f64,
     /// Neutrino energy E in GeV
     pub E: f64,
+    /// Anti-neutrino mode (flips sign of δCP)
+    pub antineutrino: bool,
 }
 
 impl VacuumParameters {
@@ -104,6 +107,7 @@ impl VacuumParameters {
             Dmsq31: 2.517e-3,
             L: l,
             E: e,
+            antineutrino: false,
         }
     }
 
@@ -118,7 +122,13 @@ impl VacuumParameters {
             Dmsq31: -2.498e-3,
             L: l,
             E: e,
+            antineutrino: false,
         }
+    }
+    
+    /// Get effective delta (sign-flipped for antineutrinos)
+    pub fn effective_delta(&self) -> f64 {
+        if self.antineutrino { -self.delta } else { self.delta }
     }
 }
 
@@ -149,6 +159,8 @@ pub struct MatterParameters {
     pub Ye: f64,
     /// Number of Newton iterations for eigenvalue refinement (0 = DMP approximation)
     pub N_Newton: u8,
+    /// Anti-neutrino mode (flips sign of matter potential and δCP)
+    pub antineutrino: bool,
 }
 
 impl MatterParameters {
@@ -168,6 +180,7 @@ impl MatterParameters {
             rho: 2.6,
             Ye: 0.5,
             N_Newton: 0,
+            antineutrino: false,
         }
     }
 
@@ -185,7 +198,18 @@ impl MatterParameters {
             rho,
             Ye: ye,
             N_Newton: n_newton,
+            antineutrino: vac.antineutrino,
         }
+    }
+    
+    /// Get effective delta (sign-flipped for antineutrinos)
+    pub fn effective_delta(&self) -> f64 {
+        if self.antineutrino { -self.delta } else { self.delta }
+    }
+    
+    /// Get matter potential sign (negative for antineutrinos)
+    pub fn matter_sign(&self) -> f64 {
+        if self.antineutrino { -1.0 } else { 1.0 }
     }
 }
 
@@ -218,12 +242,16 @@ pub fn probability_vacuum_lbl(parameters: &VacuumParameters) -> ProbabilityMatri
         s12sq,
         s13sq,
         s23sq,
-        delta,
+        delta: _,
         Dmsq21,
         Dmsq31,
         L,
         E,
+        antineutrino: _,
     } = *parameters;
+    
+    // Use effective delta (sign-flipped for antineutrinos)
+    let effective_delta = parameters.effective_delta();
 
     // Pre-calculate trig functions
     let c13sq = 1.0 - s13sq;
@@ -239,8 +267,8 @@ pub fn probability_vacuum_lbl(parameters: &VacuumParameters) -> ProbabilityMatri
     let Um2sq = (1.0 - s12sq) * (1.0 - s23sq);
 
     let Jrr = (Um2sq * Ut2sq).sqrt();
-    let sind = delta.sin();
-    let cosd = delta.cos();
+    let sind = effective_delta.sin();
+    let cosd = effective_delta.cos();
     let Um2sq = Um2sq + Ut2sq - 2.0 * Jrr * cosd;
     let Jvac = 8.0 * Jrr * c13sq * sind;
 
@@ -326,7 +354,7 @@ pub fn probability_matter_lbl(parameters: &MatterParameters) -> ProbabilityMatri
         s12sq,
         s13sq,
         s23sq,
-        delta,
+        delta: _,
         Dmsq21,
         Dmsq31,
         L,
@@ -334,7 +362,12 @@ pub fn probability_matter_lbl(parameters: &MatterParameters) -> ProbabilityMatri
         rho,
         Ye,
         N_Newton,
+        antineutrino: _,
     } = *parameters;
+    
+    // Use effective delta and matter sign (both flipped for antineutrinos)
+    let effective_delta = parameters.effective_delta();
+    let matter_sign = parameters.matter_sign();
 
     // Pre-calculate trig functions
     let c13sq = 1.0 - s13sq;
@@ -349,12 +382,12 @@ pub fn probability_matter_lbl(parameters: &MatterParameters) -> ProbabilityMatri
     let Um2sq = (1.0 - s12sq) * (1.0 - s23sq);
 
     let Jrr = (Um2sq * Ut2sq).sqrt();
-    let sind = delta.sin();
-    let cosd = delta.cos();
+    let sind = effective_delta.sin();
+    let cosd = effective_delta.cos();
 
     let Um2sq = Um2sq + Ut2sq - 2.0 * Jrr * cosd;
     let Jmatter = 8.0 * Jrr * c13sq * sind;
-    let Amatter = Ye * rho * E * YE_RHO_E_TO_A;
+    let Amatter = matter_sign * Ye * rho * E * YE_RHO_E_TO_A;
     let Dmsqee = Dmsq31 - s12sq * Dmsq21;
 
     // Calculate A, B, C, See, Tee, and part of Tmm
@@ -472,7 +505,7 @@ pub fn probability_matter_lbl(parameters: &MatterParameters) -> ProbabilityMatri
 /// use nufast::VacuumBatch;
 /// use std::f64::consts::PI;
 /// 
-/// let batch = VacuumBatch::new(0.307, 0.0218, 0.545, 1.36 * PI, 7.42e-5, 2.517e-3);
+/// let batch = VacuumBatch::new(0.307, 0.0218, 0.545, 1.36 * PI, 7.42e-5, 2.517e-3, false);
 /// 
 /// // Compute probabilities at many energies
 /// for e in [0.5, 1.0, 2.0, 3.0, 5.0] {
@@ -503,6 +536,8 @@ pub struct VacuumBatch {
 
 impl VacuumBatch {
     /// Create a batch calculator with pre-computed mixing elements.
+    /// 
+    /// For antineutrino mode, pass the negative of delta (or use `from_params`).
     pub fn new(
         s12sq: f64,
         s13sq: f64,
@@ -510,8 +545,10 @@ impl VacuumBatch {
         delta: f64,
         Dmsq21: f64,
         Dmsq31: f64,
+        antineutrino: bool,
     ) -> Self {
         let c13sq = 1.0 - s13sq;
+        let effective_delta = if antineutrino { -delta } else { delta };
 
         let Ue3sq = s13sq;
         let Ue2sq = c13sq * s12sq;
@@ -521,8 +558,8 @@ impl VacuumBatch {
         let Um2sq_temp = (1.0 - s12sq) * (1.0 - s23sq);
 
         let Jrr = (Um2sq_temp * Ut2sq_temp).sqrt();
-        let sind = delta.sin();
-        let cosd = delta.cos();
+        let sind = effective_delta.sin();
+        let cosd = effective_delta.cos();
         let Um2sq = Um2sq_temp + Ut2sq_temp - 2.0 * Jrr * cosd;
         let Jvac = 8.0 * Jrr * c13sq * sind;
 
@@ -542,14 +579,27 @@ impl VacuumBatch {
         }
     }
     
+    /// Create from VacuumParameters (handles antineutrino mode automatically).
+    pub fn from_params(params: &VacuumParameters) -> Self {
+        Self::new(
+            params.s12sq,
+            params.s13sq,
+            params.s23sq,
+            params.delta,
+            params.Dmsq21,
+            params.Dmsq31,
+            params.antineutrino,
+        )
+    }
+    
     /// Create from NuFit 5.2 best-fit values (Normal Ordering).
     pub fn nufit52_no() -> Self {
-        Self::new(0.307, 0.02203, 0.546, 1.36 * PI, 7.42e-5, 2.517e-3)
+        Self::new(0.307, 0.02203, 0.546, 1.36 * PI, 7.42e-5, 2.517e-3, false)
     }
     
     /// Create from NuFit 5.2 best-fit values (Inverted Ordering).
     pub fn nufit52_io() -> Self {
-        Self::new(0.307, 0.02219, 0.539, 1.56 * PI, 7.42e-5, -2.498e-3)
+        Self::new(0.307, 0.02219, 0.539, 1.56 * PI, 7.42e-5, -2.498e-3, false)
     }
     
     /// Compute probability matrix at given baseline and energy.
@@ -746,7 +796,7 @@ mod tests {
     
     #[test]
     fn test_batch_vacuum_consistency() {
-        let batch = VacuumBatch::new(0.307, 0.0218, 0.545, 1.36 * PI, 7.42e-5, 2.517e-3);
+        let batch = VacuumBatch::new(0.307, 0.0218, 0.545, 1.36 * PI, 7.42e-5, 2.517e-3, false);
         let energies = [0.5, 1.0, 2.0, 3.0, 5.0];
         let l = 295.0;
         
@@ -761,6 +811,7 @@ mod tests {
                 Dmsq31: 2.517e-3,
                 L: l,
                 E: e,
+                antineutrino: false,
             });
             
             for i in 0..3 {
@@ -773,5 +824,59 @@ mod tests {
                 }
             }
         }
+    }
+    
+    #[test]
+    fn test_antineutrino_vacuum() {
+        let l = 1300.0;
+        let e = 2.5;
+        
+        let nu_params = VacuumParameters::nufit52_no(l, e);
+        let mut nubar_params = nu_params;
+        nubar_params.antineutrino = true;
+        
+        let nu_probs = probability_vacuum_lbl(&nu_params);
+        let nubar_probs = probability_vacuum_lbl(&nubar_params);
+        
+        // Pee and Pmm should be the same (no CP violation in diagonal channels)
+        assert!(
+            (nu_probs[0][0] - nubar_probs[0][0]).abs() < EPSILON,
+            "Pee should be the same for ν and ν̄"
+        );
+        assert!(
+            (nu_probs[1][1] - nubar_probs[1][1]).abs() < EPSILON,
+            "Pmm should be the same for ν and ν̄"
+        );
+        
+        // Pme(ν) should equal Pem(ν̄) due to CPT theorem
+        assert!(
+            (nu_probs[1][0] - nubar_probs[0][1]).abs() < EPSILON,
+            "CPT: P(νμ→νe) should equal P(ν̄e→ν̄μ)"
+        );
+        assert!(
+            (nu_probs[0][1] - nubar_probs[1][0]).abs() < EPSILON,
+            "CPT: P(νe→νμ) should equal P(ν̄μ→ν̄e)"
+        );
+    }
+    
+    #[test]
+    fn test_antineutrino_matter() {
+        let l = 1300.0;
+        let e = 2.5;
+        
+        let nu_params = MatterParameters::nufit52_no(l, e);
+        let mut nubar_params = nu_params;
+        nubar_params.antineutrino = true;
+        
+        let nu_probs = probability_matter_lbl(&nu_params);
+        let nubar_probs = probability_matter_lbl(&nubar_params);
+        
+        // In matter, probabilities should differ due to opposite matter potential
+        let diff = (nu_probs[1][0] - nubar_probs[1][0]).abs();
+        assert!(
+            diff > 0.01,
+            "Matter effect should differ for ν and ν̄: diff = {}",
+            diff
+        );
     }
 }

@@ -19,6 +19,7 @@ fn main() {
         Dmsq31: 2.517e-3,
         L: 1300.0,
         E: 2.5,
+        antineutrino: false,
     };
 
     let matter = MatterParameters {
@@ -33,6 +34,7 @@ fn main() {
         rho: 2.848,
         Ye: 0.5,
         N_Newton: 0,
+        antineutrino: false,
     };
 
     println!("Parameters (DUNE-like, Normal Ordering):");
@@ -57,6 +59,18 @@ fn main() {
         probs_mat[1][0] - probs_vac[1][0],
         (probs_mat[1][0] / probs_vac[1][0] - 1.0) * 100.0
     );
+    
+    // Anti-neutrino comparison
+    println!("\n--- Anti-Neutrino Comparison ---\n");
+    
+    let mut matter_nubar = matter;
+    matter_nubar.antineutrino = true;
+    
+    let probs_mat_nubar = probability_matter_lbl(&matter_nubar);
+    
+    println!("P(νμ → νe) in matter:    {:.6}", probs_mat[1][0]);
+    println!("P(ν̄μ → ν̄e) in matter:   {:.6}", probs_mat_nubar[1][0]);
+    println!("CP asymmetry:            {:.6}", probs_mat[1][0] - probs_mat_nubar[1][0]);
 }
 
 fn print_matrix(probs: &[[f64; 3]; 3]) {

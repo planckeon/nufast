@@ -320,16 +320,46 @@ for (energies) |E| {
     const p = batch.probabilityAt(1300.0, E);
 }
 
-// SIMD: 4 energies simultaneously
+// SIMD: 4 energies simultaneously (f64)
 var E_vec: nufast.F64Vec = .{ 1.0, 2.0, 3.0, 4.0 };
 const p_vec = nufast.vacuumProbabilitySimd(batch, L, E_vec);
+
+// f32 SIMD: 8 energies simultaneously (2× throughput)
+const batch_f32 = nufast.VacuumBatchF32.fromF64(batch);
+var E_f32: nufast.F32Vec = .{ 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5 };
+const p_f32 = nufast.vacuumProbabilitySimdF32(batch_f32, L, E_f32);
 ```
 
-The Zig implementation uses:
-- Native SIMD via `@Vector` types
-- Zero heap allocations in hot paths
-- Explicit inlining control
-- Zig 0.15.2's improved optimizer
+The Zig implementation includes:
+- *Native SIMD* via `@Vector` types (4×f64 or 8×f32 on AVX2)
+- *Zero heap allocations* in hot paths
+- *f32 mode* for 2× SIMD lanes when full precision isn't needed
+- *MatterBatch* for pre-computed constant-density calculations
+- *Anti-neutrino mode* with sign-flipped matter potential and δCP
+
+== Anti-Neutrino Support
+
+Both Rust and Zig implementations support anti-neutrino calculations:
+
+```rust
+// Rust: anti-neutrino mode
+let mut params = MatterParameters::nufit52_no(1300.0, 2.5);
+params.antineutrino = true;
+let probs = probability_matter_lbl(&params);
+```
+
+```zig
+// Zig: anti-neutrino mode
+var params = nufast.MatterParams.default;
+params.antineutrino = true;
+const probs = nufast.matterProbability(params, 1300.0, 2.5);
+```
+
+For anti-neutrinos, two sign flips are applied:
+1. *CP phase*: $delta -> -delta$ (CPT conjugation)
+2. *Matter potential*: $A -> -A$ (opposite sign for anti-particles)
+
+This enables direct calculation of CP asymmetries: $A_"CP" = P(nu_mu -> nu_e) - P(overline(nu)_mu -> overline(nu)_e)$
 
 = Benchmark Methodology
 

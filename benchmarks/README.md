@@ -2,7 +2,7 @@
 
 This directory contains NuFast implementations and benchmarks in multiple languages:
 
-- **zig/** - Zig implementation (fastest!)
+- **zig/** - Zig implementation (fastest, with SIMD support)
 - **rust/** - Rust implementation (this crate, uses Criterion)
 - **cpp/** - C++ implementation (original NuFast)
 - **fortran/** - Fortran implementation (original NuFast)
@@ -14,7 +14,7 @@ This directory contains NuFast implementations and benchmarks in multiple langua
 ```bash
 cd zig
 zig build bench  # Scalar benchmark
-zig build simd   # SIMD benchmark
+zig build simd   # SIMD benchmark (f64 and f32 modes)
 ```
 
 ### Rust (Criterion)
@@ -44,28 +44,99 @@ python benchmark.py
 
 ## Results (AMD Ryzen, WSL2, 10M iterations)
 
+### Scalar Performance
+
 | Language | Vacuum | Matter N=0 | Matter N=1 | Matter N=2 | Matter N=3 |
 |----------|--------|------------|------------|------------|------------|
-| **Zig**  | **25.6 ns** | **73.3 ns** | **77.7 ns** | **81.1 ns** | **82.4 ns** |
+| **Zig**  | **31 ns** | **85 ns** | **98 ns** | **114 ns** | **121 ns** |
 | Rust     | 61 ns  | 95 ns      | 106 ns     | 113 ns     | 117 ns     |
 | C++      | 49 ns  | 130 ns     | 143 ns     | 154 ns     | 164 ns     |
 | Fortran  | 51 ns  | 107 ns     | 123 ns     | 146 ns     | 167 ns     |
 | Python   | 14,700 ns | 21,900 ns | 21,200 ns | 18,500 ns | 16,300 ns |
 
+### Zig SIMD Performance
+
+| Mode | Scalar | SIMD f64 (4×) | SIMD f32 (8×) |
+|------|--------|---------------|---------------|
+| Vacuum | 33 ns, 30 M/s | 30 ns, 33 M/s | **14 ns, 70 M/s** |
+| Matter N=0 | 77 ns, 13 M/s | 38 ns, 26 M/s | **26 ns, 39 M/s** |
+
 ### Key Findings
 
-1. **Zig is 2.4× faster than Rust** for vacuum calculations
-2. **Zig is 1.3× faster than Rust** for matter calculations
-3. **Zig is 1.8× faster than C++** for matter (the complex case)
-4. Zig SIMD provides ~10% additional speedup
-5. Python is ~600× slower than Zig
+1. **Zig is 2× faster than Rust** for vacuum calculations (31 ns vs 61 ns)
+2. **Zig SIMD f32 achieves 70 M/s** vacuum throughput (2.3× scalar speedup)
+3. **Zig SIMD matter achieves 3× speedup** over scalar with f32 mode
+4. **Rust is 27% faster than C++** for matter calculations
+5. **Python is ~600× slower than Zig**
 
-### Throughput
+### Throughput Summary
 
 | Language | Vacuum | Matter (N=0) |
 |----------|--------|--------------|
-| **Zig**  | **39.2 M/s** | **13.6 M/s** |
-| Rust     | 17.5 M/s | 10.5 M/s   |
-| C++      | 20.3 M/s | 7.7 M/s    |
-| Fortran  | 19.7 M/s | 9.4 M/s    |
-| Python   | 0.07 M/s | 0.05 M/s   |
+| **Zig SIMD f32** | **70 M/s** | **39 M/s** |
+| **Zig SIMD f64** | 33 M/s | 26 M/s |
+| Zig scalar | 32 M/s | 12 M/s |
+| Rust     | 17.5 M/s | 10.5 M/s |
+| C++      | 20.3 M/s | 7.7 M/s |
+| Fortran  | 19.7 M/s | 9.4 M/s |
+| Python   | 0.07 M/s | 0.05 M/s |
+
+## New Features (v0.4.0)
+
+### Anti-Neutrino Mode
+
+Both Rust and Zig now support anti-neutrino calculations:
+
+```rust
+// Rust
+let mut params = MatterParameters::nufit52_no(1300.0, 2.5);
+params.antineutrino = true;
+let probs = probability_matter_lbl(&params);
+```
+
+```zig
+// Zig
+var params = nufast.MatterParams.default;
+params.antineutrino = true;
+const probs = nufast.matterProbability(params, 1300.0, 2.5);
+```
+
+For anti-neutrinos:
+- δCP sign is flipped
+- Matter potential sign is flipped (A → -A)
+
+### SIMD Matter Calculations (Zig)
+
+```zig
+const matter_batch = nufast.MatterBatch.init(params);
+const probs = nufast.matterProbabilitySimd(matter_batch, L, energies);
+```
+
+### f32 Mode (Zig)
+
+For maximum throughput when precision isn't critical:
+
+```zig
+const batch_f32 = nufast.VacuumBatchF32.fromF64(batch);
+const probs = nufast.vacuumProbabilitySimdF32(batch_f32, L, energies);
+// 8 energies at once (vs 4 for f64)
+```
+
+### Batch APIs
+
+Pre-compute mixing matrix elements for repeated calculations:
+
+```zig
+// Vacuum batch (30-40% faster for energy spectra)
+const batch = nufast.VacuumBatch.init(params);
+
+// Matter batch (30-40% faster for constant density)
+const matter_batch = nufast.MatterBatch.init(matter_params);
+```
+
+## Notes
+
+- Zig requires version 0.15.2+
+- All benchmarks use NuFIT 5.2 parameters
+- SIMD lane count depends on CPU (4×f64 / 8×f32 on AVX2)
+- f32 mode provides ~7 digits of precision (sufficient for most applications)
