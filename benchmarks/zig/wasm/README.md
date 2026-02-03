@@ -1,19 +1,19 @@
-# @nufast/wasm
+# nufast
 
 Fast three-flavor neutrino oscillation probabilities running in WebAssembly.
 
 ## Installation
 
 ```bash
-npm install @nufast/wasm
+npm install nufast
 # or
-bun add @nufast/wasm
+bun add nufast
 ```
 
 ## Quick Start
 
 ```typescript
-import { loadNuFast } from '@nufast/wasm';
+import { loadNuFast } from 'nufast';
 
 const nufast = await loadNuFast();
 
@@ -37,11 +37,11 @@ console.log(`P(νμ → νe) = ${(Pme * 100).toFixed(2)}%`);
 
 ```typescript
 // Browser
-import { loadNuFast } from '@nufast/wasm';
+import { loadNuFast } from 'nufast';
 const nufast = await loadNuFast('path/to/nufast.wasm');
 
 // Node.js / Bun
-import { loadNuFastFromBytes } from '@nufast/wasm';
+import { loadNuFastFromBytes } from 'nufast';
 import { readFileSync } from 'fs';
 const bytes = readFileSync('nufast.wasm');
 const nufast = await loadNuFastFromBytes(bytes);
@@ -66,7 +66,7 @@ const PmeMatter = nufast.matterPmeDefault(L, E, rho);
 ### Custom Parameters
 
 ```typescript
-import { DEFAULT_PARAMS } from '@nufast/wasm';
+import { DEFAULT_PARAMS } from 'nufast';
 
 // Inverted mass ordering
 nufast.setVacuumParams({

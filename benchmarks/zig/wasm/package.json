@@ -1,15 +1,14 @@
 {
-  "name": "@nufast/wasm",
-  "version": "0.1.0",
-  "description": "Fast three-flavor neutrino oscillation probabilities (WebAssembly)",
+  "name": "nufast",
+  "version": "0.4.0",
+  "description": "Fast neutrino oscillation probabilities (WASM)",
   "main": "nufast.js",
   "module": "nufast.js",
   "types": "nufast.d.ts",
   "files": [
-    "nufast.js",
-    "nufast.d.ts",
-    "nufast.wasm",
-    "nufast-simd.wasm"
+    "*.wasm",
+    "*.js",
+    "*.d.ts"
   ],
   "exports": {
     ".": {
