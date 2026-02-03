@@ -8,6 +8,7 @@ Zig implementation of the NuFast algorithm by P.B. Denton ([arXiv:2405.02400](ht
 
 - Vacuum oscillations (exact analytic)
 - Matter effects via DMP approximation with Newton refinement
+- **Sterile Neutrinos (3+1 model)** - exact 4-flavor vacuum oscillations
 - **Non-Standard Interactions (NSI)** - see below
 - Anti-neutrino mode (sign-flipped δCP and matter potential)
 - SIMD vectorization (4×f64 or 8×f32 on AVX2)
@@ -124,6 +125,28 @@ params.antineutrino = true;
 const probs = nufast.matterProbability(params, 1300.0, 2.5);
 ```
 
+### Sterile Neutrinos (3+1)
+
+```zig
+const sterile = @import("sterile");
+
+// Default: NuFIT 5.2 + typical sterile parameters (Δm²₄₁ ~ 1 eV²)
+const params = sterile.SterileParams.default;
+const probs = sterile.sterileProbabilityVacuum(params, 500.0, 0.03);
+// probs[0][3] = P(νe → νs), probs[1][0] = P(νμ → νe)
+
+// Get just active sector (3×3) for comparison with standard oscillations
+const active_probs = sterile.getActiveProbabilities(probs);
+
+// Short-baseline approximations (for reactor/LSND-like experiments)
+const Pee = sterile.sblElectronDisappearance(params, 0.1, 0.003);
+const Pme = sterile.sblMuonToElectronAppearance(params, 0.5, 0.03);
+```
+
+> ⚠️ **Note:** The NuFast approximation does not apply to 4-flavor oscillations.
+> The sterile module uses exact vacuum oscillation formulas. Matter effects for
+> 4-flavor would require numerical diagonalization of a 4×4 matrix.
+
 ## Benchmarks
 
 AMD Ryzen, WSL2, 10M iterations.
@@ -157,6 +180,18 @@ e   │ P_ee    P_eμ    P_eτ  │
     └───────────────────────┘
 ```
 
+For sterile (4×4):
+
+```
+        e       μ       τ       s
+    ┌───────────────────────────────┐
+e   │ P_ee    P_eμ    P_eτ    P_es  │
+μ   │ P_μe    P_μμ    P_μτ    P_μs  │
+τ   │ P_τe    P_τμ    P_ττ    P_τs  │
+s   │ P_se    P_sμ    P_sτ    P_ss  │
+    └───────────────────────────────┘
+```
+
 `n_newton` controls matter eigenvalue accuracy:
 - 0: DMP approximation (~0.1%)
 - 1: One Newton iteration (~0.01%)
@@ -180,12 +215,15 @@ zig build docs
 
 The documentation will be generated in the `docs/` folder. Open `docs/index.html` in a browser to view.
 
-22 tests covering:
+Tests covering:
 - Probability conservation (unitarity)
 - Batch/SIMD consistency with scalar
 - CPT theorem for anti-neutrinos
 - Cross-validation against original NuFast
 - Edge cases (L→0, high E, zero θ₁₃, etc.)
+- 4-flavor reduces to 3-flavor when sterile mixing = 0
+- 4×4 PMNS matrix unitarity
+- Short-baseline approximations
 
 ## License
 
