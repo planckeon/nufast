@@ -60,13 +60,13 @@
 use core::f64::consts::PI;
 
 /// Conversion factor: eV² × km → GeV (divided by 4)
-/// 
+///
 /// This combines ħc and unit conversions for the oscillation phase:
 /// Δ = Δm² × L / (4E) in natural units
 const EV_SQ_KM_TO_GEV_OVER4: f64 = 1e-9 / 1.97327e-7 * 1e3 / 4.0;
 
 /// Matter potential conversion factor: Y_e × ρ × E → A
-/// 
+///
 /// A = √2 G_F N_e E where N_e = Y_e × ρ × N_A / m_nucleon
 /// This constant is approximately 1.52 × 10⁻⁴ eV² / (g/cm³ × GeV)
 const YE_RHO_E_TO_A: f64 = 1.52e-4;
@@ -129,10 +129,14 @@ impl VacuumParameters {
             antineutrino: false,
         }
     }
-    
+
     /// Get effective delta (sign-flipped for antineutrinos)
     pub fn effective_delta(&self) -> f64 {
-        if self.antineutrino { -self.delta } else { self.delta }
+        if self.antineutrino {
+            -self.delta
+        } else {
+            self.delta
+        }
     }
 }
 
@@ -205,15 +209,23 @@ impl MatterParameters {
             antineutrino: vac.antineutrino,
         }
     }
-    
+
     /// Get effective delta (sign-flipped for antineutrinos)
     pub fn effective_delta(&self) -> f64 {
-        if self.antineutrino { -self.delta } else { self.delta }
+        if self.antineutrino {
+            -self.delta
+        } else {
+            self.delta
+        }
     }
-    
+
     /// Get matter potential sign (negative for antineutrinos)
     pub fn matter_sign(&self) -> f64 {
-        if self.antineutrino { -1.0 } else { 1.0 }
+        if self.antineutrino {
+            -1.0
+        } else {
+            1.0
+        }
     }
 }
 
@@ -253,7 +265,7 @@ pub fn probability_vacuum_lbl(parameters: &VacuumParameters) -> ProbabilityMatri
         E,
         antineutrino: _,
     } = *parameters;
-    
+
     // Use effective delta (sign-flipped for antineutrinos)
     let effective_delta = parameters.effective_delta();
 
@@ -368,7 +380,7 @@ pub fn probability_matter_lbl(parameters: &MatterParameters) -> ProbabilityMatri
         N_Newton,
         antineutrino: _,
     } = *parameters;
-    
+
     // Use effective delta and matter sign (both flipped for antineutrinos)
     let effective_delta = parameters.effective_delta();
     let matter_sign = parameters.matter_sign();
@@ -405,13 +417,13 @@ pub fn probability_matter_lbl(parameters: &MatterParameters) -> ProbabilityMatri
     // Get lambda3 from lambda+ of MP/DMP
     let xmat = Amatter / Dmsqee;
     let tmp = 1.0 - xmat;
-    let mut lambda3 = Dmsq31 + 0.5 * Dmsqee * (xmat - 1.0 + (tmp * tmp + 4.0 * s13sq * xmat).sqrt());
+    let mut lambda3 =
+        Dmsq31 + 0.5 * Dmsqee * (xmat - 1.0 + (tmp * tmp + 4.0 * s13sq * xmat).sqrt());
 
     // Newton iterations to improve lambda3 arbitrarily
     let B = Tmm_base + Amatter * See; // B is only needed for N_Newton >= 1
     for _ in 0..N_Newton {
-        lambda3 = (lambda3 * lambda3 * (lambda3 - A) + C)
-            / (lambda3 * (2.0 * lambda3 - A) + B);
+        lambda3 = (lambda3 * lambda3 * (lambda3 - A) + C) / (lambda3 * (2.0 * lambda3 - A) + B);
     }
 
     // Get Delta lambdas
@@ -499,18 +511,18 @@ pub fn probability_matter_lbl(parameters: &MatterParameters) -> ProbabilityMatri
 }
 
 /// Pre-computed vacuum oscillation parameters for batch calculations.
-/// 
+///
 /// Use this when computing probabilities over many energy or baseline values.
 /// The mixing matrix elements are computed once, reducing per-call overhead by ~30%.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust
 /// use nufast::VacuumBatch;
 /// use std::f64::consts::PI;
-/// 
+///
 /// let batch = VacuumBatch::new(0.307, 0.0218, 0.545, 1.36 * PI, 7.42e-5, 2.517e-3, false);
-/// 
+///
 /// // Compute probabilities at many energies
 /// for e in [0.5, 1.0, 2.0, 3.0, 5.0] {
 ///     let probs = batch.probability_at(295.0, e);
@@ -529,10 +541,10 @@ pub struct VacuumBatch {
     Ut1sq: f64,
     Ut2sq: f64,
     Ut3sq: f64,
-    
+
     // CP violation term
     Jvac: f64,
-    
+
     // Mass splittings
     Dmsq21: f64,
     Dmsq31: f64,
@@ -540,7 +552,7 @@ pub struct VacuumBatch {
 
 impl VacuumBatch {
     /// Create a batch calculator with pre-computed mixing elements.
-    /// 
+    ///
     /// For antineutrino mode, pass the negative of delta (or use `from_params`).
     pub fn new(
         s12sq: f64,
@@ -575,14 +587,21 @@ impl VacuumBatch {
         let Ut1sq = 1.0 - Um1sq - Ue1sq;
 
         Self {
-            Ue1sq, Ue2sq, Ue3sq,
-            Um1sq, Um2sq, Um3sq,
-            Ut1sq, Ut2sq, Ut3sq,
+            Ue1sq,
+            Ue2sq,
+            Ue3sq,
+            Um1sq,
+            Um2sq,
+            Um3sq,
+            Ut1sq,
+            Ut2sq,
+            Ut3sq,
             Jvac,
-            Dmsq21, Dmsq31,
+            Dmsq21,
+            Dmsq31,
         }
     }
-    
+
     /// Create from VacuumParameters (handles antineutrino mode automatically).
     pub fn from_params(params: &VacuumParameters) -> Self {
         Self::new(
@@ -595,19 +614,19 @@ impl VacuumBatch {
             params.antineutrino,
         )
     }
-    
+
     /// Create from NuFit 5.2 best-fit values (Normal Ordering).
     pub fn nufit52_no() -> Self {
         Self::new(0.307, 0.02203, 0.546, 1.36 * PI, 7.42e-5, 2.517e-3, false)
     }
-    
+
     /// Create from NuFit 5.2 best-fit values (Inverted Ordering).
     pub fn nufit52_io() -> Self {
         Self::new(0.307, 0.02219, 0.539, 1.56 * PI, 7.42e-5, -2.498e-3, false)
     }
-    
+
     /// Compute probability matrix at given baseline and energy.
-    /// 
+    ///
     /// This is ~30% faster than `probability_vacuum_lbl` when called repeatedly.
     #[inline]
     pub fn probability_at(&self, l: f64, e: f64) -> ProbabilityMatrix {
@@ -660,33 +679,49 @@ impl VacuumBatch {
 
         probs
     }
-    
+
     /// Compute probabilities for a single initial flavor over many energies.
-    /// 
+    ///
     /// This is the most efficient way to compute energy spectra.
     /// Returns a Vec of (energy, Pe, Pmu, Ptau) tuples.
     #[cfg(not(feature = "no_std"))]
-    pub fn spectrum(&self, l: f64, energies: &[f64], initial_flavor: usize) -> Vec<(f64, f64, f64, f64)> {
-        energies.iter().map(|&e| {
-            let probs = self.probability_at(l, e);
-            let row = initial_flavor.min(2);
-            (e, probs[row][0], probs[row][1], probs[row][2])
-        }).collect()
+    pub fn spectrum(
+        &self,
+        l: f64,
+        energies: &[f64],
+        initial_flavor: usize,
+    ) -> Vec<(f64, f64, f64, f64)> {
+        energies
+            .iter()
+            .map(|&e| {
+                let probs = self.probability_at(l, e);
+                let row = initial_flavor.min(2);
+                (e, probs[row][0], probs[row][1], probs[row][2])
+            })
+            .collect()
     }
-    
+
     /// Compute probabilities along a baseline at fixed energy.
     #[cfg(not(feature = "no_std"))]
-    pub fn baseline_scan(&self, e: f64, baselines: &[f64], initial_flavor: usize) -> Vec<(f64, f64, f64, f64)> {
-        baselines.iter().map(|&l| {
-            let probs = self.probability_at(l, e);
-            let row = initial_flavor.min(2);
-            (l, probs[row][0], probs[row][1], probs[row][2])
-        }).collect()
+    pub fn baseline_scan(
+        &self,
+        e: f64,
+        baselines: &[f64],
+        initial_flavor: usize,
+    ) -> Vec<(f64, f64, f64, f64)> {
+        baselines
+            .iter()
+            .map(|&l| {
+                let probs = self.probability_at(l, e);
+                let row = initial_flavor.min(2);
+                (l, probs[row][0], probs[row][1], probs[row][2])
+            })
+            .collect()
     }
 }
 
 /// Clamp all probabilities to [0, 1] and ensure row unitarity.
-/// 
+///
 /// Useful when numerical precision issues cause slight violations.
 pub fn normalize_probabilities(probs: &mut ProbabilityMatrix) {
     for row in probs.iter_mut() {
@@ -797,13 +832,13 @@ mod tests {
             "CP conjugate probabilities should differ"
         );
     }
-    
+
     #[test]
     fn test_batch_vacuum_consistency() {
         let batch = VacuumBatch::new(0.307, 0.0218, 0.545, 1.36 * PI, 7.42e-5, 2.517e-3, false);
         let energies = [0.5, 1.0, 2.0, 3.0, 5.0];
         let l = 295.0;
-        
+
         for &e in &energies {
             let probs_batch = batch.probability_at(l, e);
             let probs_single = probability_vacuum_lbl(&VacuumParameters {
@@ -817,31 +852,35 @@ mod tests {
                 E: e,
                 antineutrino: false,
             });
-            
+
             for i in 0..3 {
                 for j in 0..3 {
                     assert!(
                         (probs_batch[i][j] - probs_single[i][j]).abs() < EPSILON,
                         "Batch and single differ at E={}: [{},{}] {} vs {}",
-                        e, i, j, probs_batch[i][j], probs_single[i][j]
+                        e,
+                        i,
+                        j,
+                        probs_batch[i][j],
+                        probs_single[i][j]
                     );
                 }
             }
         }
     }
-    
+
     #[test]
     fn test_antineutrino_vacuum() {
         let l = 1300.0;
         let e = 2.5;
-        
+
         let nu_params = VacuumParameters::nufit52_no(l, e);
         let mut nubar_params = nu_params;
         nubar_params.antineutrino = true;
-        
+
         let nu_probs = probability_vacuum_lbl(&nu_params);
         let nubar_probs = probability_vacuum_lbl(&nubar_params);
-        
+
         // Pee and Pmm should be the same (no CP violation in diagonal channels)
         assert!(
             (nu_probs[0][0] - nubar_probs[0][0]).abs() < EPSILON,
@@ -851,7 +890,7 @@ mod tests {
             (nu_probs[1][1] - nubar_probs[1][1]).abs() < EPSILON,
             "Pmm should be the same for ν and ν̄"
         );
-        
+
         // Pme(ν) should equal Pem(ν̄) due to CPT theorem
         assert!(
             (nu_probs[1][0] - nubar_probs[0][1]).abs() < EPSILON,
@@ -862,19 +901,19 @@ mod tests {
             "CPT: P(νe→νμ) should equal P(ν̄μ→ν̄e)"
         );
     }
-    
+
     #[test]
     fn test_antineutrino_matter() {
         let l = 1300.0;
         let e = 2.5;
-        
+
         let nu_params = MatterParameters::nufit52_no(l, e);
         let mut nubar_params = nu_params;
         nubar_params.antineutrino = true;
-        
+
         let nu_probs = probability_matter_lbl(&nu_params);
         let nubar_probs = probability_matter_lbl(&nubar_params);
-        
+
         // In matter, probabilities should differ due to opposite matter potential
         let diff = (nu_probs[1][0] - nubar_probs[1][0]).abs();
         assert!(

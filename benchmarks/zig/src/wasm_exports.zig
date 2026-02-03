@@ -12,7 +12,7 @@ const nufast = @import("nufast.zig");
 /// Global vacuum parameters (set via exported functions)
 var g_vacuum_params: nufast.VacuumParams = nufast.VacuumParams.default;
 
-/// Global matter parameters  
+/// Global matter parameters
 var g_matter_params: nufast.MatterParams = nufast.MatterParams.default;
 
 /// Result buffer for probability matrix (9 f64s, row-major)
@@ -68,10 +68,10 @@ export fn set_matter_params(rho: f64, Ye: f64, n_newton: u8, antineutrino: bool)
 /// Returns pointer to result buffer (9 f64s, row-major: [Pee, Pem, Pet, Pme, Pmm, Pmt, Pte, Ptm, Ptt])
 export fn vacuum_probability(L: f64, E: f64) *const [9]f64 {
     const probs = nufast.vacuumProbability(g_vacuum_params, L, E);
-    
+
     // Flatten to row-major
     g_result[0] = probs[0][0]; // Pee
-    g_result[1] = probs[0][1]; // Pem  
+    g_result[1] = probs[0][1]; // Pem
     g_result[2] = probs[0][2]; // Pet
     g_result[3] = probs[1][0]; // Pme
     g_result[4] = probs[1][1]; // Pmm
@@ -79,14 +79,14 @@ export fn vacuum_probability(L: f64, E: f64) *const [9]f64 {
     g_result[6] = probs[2][0]; // Pte
     g_result[7] = probs[2][1]; // Ptm
     g_result[8] = probs[2][2]; // Ptt
-    
+
     return &g_result;
 }
 
 /// Calculate matter oscillation probability and store in result buffer
 export fn matter_probability(L: f64, E: f64) *const [9]f64 {
     const probs = nufast.matterProbability(g_matter_params, L, E);
-    
+
     g_result[0] = probs[0][0];
     g_result[1] = probs[0][1];
     g_result[2] = probs[0][2];
@@ -96,7 +96,7 @@ export fn matter_probability(L: f64, E: f64) *const [9]f64 {
     g_result[6] = probs[2][0];
     g_result[7] = probs[2][1];
     g_result[8] = probs[2][2];
-    
+
     return &g_result;
 }
 
@@ -218,12 +218,12 @@ export fn get_max_batch_size() usize {
 /// Returns pointer to output buffer
 export fn vacuum_batch_Pme(L: f64, count: usize) *const [MAX_BATCH_SIZE]f64 {
     const n = @min(count, MAX_BATCH_SIZE);
-    
+
     for (0..n) |i| {
         const probs = g_vacuum_batch.probabilityAt(L, g_energies[i]);
         g_batch_output[i] = probs[1][0]; // Pme
     }
-    
+
     return &g_batch_output;
 }
 
@@ -231,12 +231,12 @@ export fn vacuum_batch_Pme(L: f64, count: usize) *const [MAX_BATCH_SIZE]f64 {
 /// Uses pre-computed matter batch (call init_matter_batch first)
 export fn matter_batch_Pme(L: f64, count: usize) *const [MAX_BATCH_SIZE]f64 {
     const n = @min(count, MAX_BATCH_SIZE);
-    
+
     for (0..n) |i| {
         const probs = g_matter_batch.probabilityAt(L, g_energies[i]);
         g_batch_output[i] = probs[1][0]; // Pme
     }
-    
+
     return &g_batch_output;
 }
 
@@ -251,7 +251,7 @@ export fn get_batch_matrix_ptr() *const [MAX_BATCH_SIZE * 9]f64 {
 
 export fn vacuum_batch_full(L: f64, count: usize) *const [MAX_BATCH_SIZE * 9]f64 {
     const n = @min(count, MAX_BATCH_SIZE);
-    
+
     for (0..n) |i| {
         const probs = g_vacuum_batch.probabilityAt(L, g_energies[i]);
         const base = i * 9;
@@ -265,13 +265,13 @@ export fn vacuum_batch_full(L: f64, count: usize) *const [MAX_BATCH_SIZE * 9]f64
         g_batch_matrix[base + 7] = probs[2][1];
         g_batch_matrix[base + 8] = probs[2][2];
     }
-    
+
     return &g_batch_matrix;
 }
 
 export fn matter_batch_full(L: f64, count: usize) *const [MAX_BATCH_SIZE * 9]f64 {
     const n = @min(count, MAX_BATCH_SIZE);
-    
+
     for (0..n) |i| {
         const probs = g_matter_batch.probabilityAt(L, g_energies[i]);
         const base = i * 9;
@@ -285,6 +285,6 @@ export fn matter_batch_full(L: f64, count: usize) *const [MAX_BATCH_SIZE * 9]f64
         g_batch_matrix[base + 7] = probs[2][1];
         g_batch_matrix[base + 8] = probs[2][2];
     }
-    
+
     return &g_batch_matrix;
 }

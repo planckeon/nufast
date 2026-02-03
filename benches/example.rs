@@ -1,11 +1,8 @@
-
 use nufast::main::probability_matter_lbl;
 
 fn main() {
     // Run registered benchmarks.
     // divan::main();
-
-    
 
     println!("hello world");
 }

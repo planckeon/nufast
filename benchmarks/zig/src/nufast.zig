@@ -92,7 +92,7 @@ pub const MatterParams = struct {
         .Ye = 0.5,
         .n_newton = 0,
     };
-    
+
     /// Get clamped Newton iteration count (0-3)
     pub fn clampedNewton(self: MatterParams) u8 {
         return @min(self.n_newton, MAX_NEWTON_ITERATIONS);
@@ -215,7 +215,7 @@ pub const VacuumBatch = struct {
 };
 
 /// Pre-computed structure for batch matter calculations at constant density.
-/// 
+///
 /// Pre-computes all terms that don't depend on energy:
 /// - Vacuum mixing elements and Jarlskog
 /// - Matter density terms
@@ -1372,4 +1372,3 @@ test "cross-validation: T2K-like matter (L=295 km, E=0.6 GeV, rho=2.6)" {
     try std.testing.expectApproxEqAbs(probs[1][0], 6.284592128957496e-02, 1e-10);
     try std.testing.expectApproxEqAbs(probs[1][1], 1.004304479827633e-02, 1e-10);
 }
-

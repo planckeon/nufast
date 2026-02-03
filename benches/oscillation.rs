@@ -8,8 +8,10 @@
 //! - Batch calculations (energy spectrum)
 //! - VacuumBatch optimization
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
-use nufast::{VacuumParameters, MatterParameters, VacuumBatch, probability_vacuum_lbl, probability_matter_lbl};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use nufast::{
+    probability_matter_lbl, probability_vacuum_lbl, MatterParameters, VacuumBatch, VacuumParameters,
+};
 use std::f64::consts::PI;
 
 /// Standard DUNE-like parameters for benchmarking
@@ -45,7 +47,7 @@ fn dune_matter_params(e: f64, n_newton: u8) -> MatterParameters {
 /// Single-point vacuum oscillation benchmark
 fn bench_vacuum_single(c: &mut Criterion) {
     let params = dune_vacuum_params(2.5);
-    
+
     c.bench_function("vacuum_single", |b| {
         b.iter(|| probability_vacuum_lbl(black_box(&params)))
     });
@@ -54,7 +56,7 @@ fn bench_vacuum_single(c: &mut Criterion) {
 /// Single-point matter oscillation benchmark at various N_Newton levels
 fn bench_matter_single(c: &mut Criterion) {
     let mut group = c.benchmark_group("matter_single");
-    
+
     for n_newton in [0u8, 1, 2, 3] {
         let params = dune_matter_params(2.5, n_newton);
         group.bench_with_input(
@@ -63,7 +65,7 @@ fn bench_matter_single(c: &mut Criterion) {
             |b, params| b.iter(|| probability_matter_lbl(black_box(params))),
         );
     }
-    
+
     group.finish();
 }
 
@@ -72,7 +74,7 @@ fn bench_energy_spectrum(c: &mut Criterion) {
     let e_min = 0.5;
     let e_max = 5.0;
     let n_points = 1000;
-    
+
     c.bench_function("vacuum_spectrum_1000", |b| {
         b.iter(|| {
             for i in 0..n_points {
@@ -82,7 +84,7 @@ fn bench_energy_spectrum(c: &mut Criterion) {
             }
         })
     });
-    
+
     // Optimized batch version using pre-computed mixing elements
     c.bench_function("vacuum_batch_spectrum_1000", |b| {
         let batch = VacuumBatch::new(0.31, 0.02, 0.55, -0.7 * PI, 7.5e-5, 2.5e-3);
@@ -93,7 +95,7 @@ fn bench_energy_spectrum(c: &mut Criterion) {
             }
         })
     });
-    
+
     c.bench_function("matter_N0_spectrum_1000", |b| {
         b.iter(|| {
             for i in 0..n_points {
@@ -103,7 +105,7 @@ fn bench_energy_spectrum(c: &mut Criterion) {
             }
         })
     });
-    
+
     c.bench_function("matter_N1_spectrum_1000", |b| {
         b.iter(|| {
             for i in 0..n_points {
@@ -119,7 +121,7 @@ fn bench_energy_spectrum(c: &mut Criterion) {
 fn bench_throughput(c: &mut Criterion) {
     let mut group = c.benchmark_group("throughput");
     group.throughput(criterion::Throughput::Elements(1_000_000));
-    
+
     group.bench_function("vacuum_1M", |b| {
         let params = dune_vacuum_params(2.5);
         b.iter(|| {
@@ -128,7 +130,7 @@ fn bench_throughput(c: &mut Criterion) {
             }
         })
     });
-    
+
     group.bench_function("matter_N0_1M", |b| {
         let params = dune_matter_params(2.5, 0);
         b.iter(|| {
@@ -137,7 +139,7 @@ fn bench_throughput(c: &mut Criterion) {
             }
         })
     });
-    
+
     group.finish();
 }
 

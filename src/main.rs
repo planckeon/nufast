@@ -2,7 +2,7 @@
 //!
 //! Run with: `cargo run --release`
 
-use nufast::{MatterParameters, VacuumParameters, probability_matter_lbl, probability_vacuum_lbl};
+use nufast::{probability_matter_lbl, probability_vacuum_lbl, MatterParameters, VacuumParameters};
 use std::f64::consts::PI;
 
 fn main() {
@@ -49,35 +49,44 @@ fn main() {
     println!("Vacuum Oscillation Probabilities:");
     print_matrix(&probs_vac);
 
-    println!("\nMatter Oscillation Probabilities (N_Newton={}):", matter.N_Newton);
+    println!(
+        "\nMatter Oscillation Probabilities (N_Newton={}):",
+        matter.N_Newton
+    );
     print_matrix(&probs_mat);
 
     println!("\nMatter Effect on P(νμ → νe):");
     println!("  Vacuum: {:.6}", probs_vac[1][0]);
     println!("  Matter: {:.6}", probs_mat[1][0]);
-    println!("  Difference: {:.6} ({:+.1}%)", 
+    println!(
+        "  Difference: {:.6} ({:+.1}%)",
         probs_mat[1][0] - probs_vac[1][0],
         (probs_mat[1][0] / probs_vac[1][0] - 1.0) * 100.0
     );
-    
+
     // Anti-neutrino comparison
     println!("\n--- Anti-Neutrino Comparison ---\n");
-    
+
     let mut matter_nubar = matter;
     matter_nubar.antineutrino = true;
-    
+
     let probs_mat_nubar = probability_matter_lbl(&matter_nubar);
-    
+
     println!("P(νμ → νe) in matter:    {:.6}", probs_mat[1][0]);
     println!("P(ν̄μ → ν̄e) in matter:   {:.6}", probs_mat_nubar[1][0]);
-    println!("CP asymmetry:            {:.6}", probs_mat[1][0] - probs_mat_nubar[1][0]);
+    println!(
+        "CP asymmetry:            {:.6}",
+        probs_mat[1][0] - probs_mat_nubar[1][0]
+    );
 }
 
 fn print_matrix(probs: &[[f64; 3]; 3]) {
     println!("         e          μ          τ");
     let labels = ['e', 'μ', 'τ'];
     for (i, row) in probs.iter().enumerate() {
-        println!("  {} → {:>9.6}  {:>9.6}  {:>9.6}", 
-            labels[i], row[0], row[1], row[2]);
+        println!(
+            "  {} → {:>9.6}  {:>9.6}  {:>9.6}",
+            labels[i], row[0], row[1], row[2]
+        );
     }
 }
