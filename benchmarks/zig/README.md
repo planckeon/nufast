@@ -8,6 +8,7 @@ Zig implementation of the NuFast algorithm by P.B. Denton ([arXiv:2405.02400](ht
 
 - Vacuum oscillations (exact analytic)
 - Matter effects via DMP approximation with Newton refinement
+- **Non-Standard Interactions (NSI)** - see below
 - Anti-neutrino mode (sign-flipped δCP and matter potential)
 - SIMD vectorization (4×f64 or 8×f32 on AVX2)
 - f32 mode for increased throughput
@@ -189,3 +190,84 @@ The documentation will be generated in the `docs/` folder. Open `docs/index.html
 ## License
 
 MIT
+
+---
+
+## Non-Standard Interactions (NSI)
+
+The `nsi` module provides experimental support for neutrino Non-Standard Interactions.
+
+### Physics Background
+
+NSI adds additional matter potential terms to the Hamiltonian:
+
+```
+H_matter → A × (diag(1,0,0) + ε)
+```
+
+where ε is a 3×3 Hermitian matrix parameterized by:
+- εee, εμμ, εττ (real, diagonal)
+- εeμ, εeτ, εμτ (complex, off-diagonal)
+
+Reference: [arXiv:1907.00991](https://arxiv.org/abs/1907.00991) (NSI Status Report)
+
+### Usage
+
+```zig
+const nsi = @import("nsi");
+const nufast = @import("nufast");
+
+// Create NSI parameters
+var nsi_params = nsi.NsiParams{
+    .eps_ee = 0.1,      // Diagonal: enhanced electron potential
+    .eps_mm = -0.05,    // Diagonal: muon potential
+    .eps_tt = -0.05,    // Diagonal: tau potential
+    // Off-diagonal (complex)
+    .eps_em = nsi.Complex.init(0.03, 0.01),  // Real + imaginary parts
+};
+
+// Create matter parameters with NSI
+const matter = nsi.MatterParamsNsi{
+    .vacuum = nufast.VacuumParams.default,
+    .rho = 2.848,
+    .Ye = 0.5,
+    .n_newton = 1,
+    .nsi = nsi_params,
+};
+
+// Calculate probabilities
+const probs = nsi.matterProbabilityNsi(matter, 1300.0, 2.5);
+```
+
+### Limitations
+
+**Important**: The NuFast algorithm uses the DMP (Denton-Minakata-Parke) approximation which assumes a specific form of the matter Hamiltonian. NSI modifications can affect accuracy:
+
+1. **Initial guess accuracy**: The DMP initial guess for λ₃ is derived for standard matter effects and may not be optimal for large NSI values
+
+2. **Eigenvalue ordering**: Can change with NSI, especially near resonances
+
+3. **Large NSI**: For |ε_αβ| > 0.1, more Newton iterations may be needed. The code automatically adds extra iterations for large NSI.
+
+4. **Accuracy regime**: This implementation is accurate for "small" NSI typical of current experimental bounds (|ε| ≲ 0.3)
+
+5. **Off-diagonal NSI**: Currently treated perturbatively. For large off-diagonal NSI, consider using exact numerical diagonalization.
+
+6. **No SIMD support**: NSI calculations are scalar-only (no vectorized batch mode yet)
+
+### When NSI is zero
+
+When all NSI parameters are zero (the default), the code automatically falls back to the standard (faster) NuFast algorithm.
+
+### Tests
+
+```bash
+zig build test-nsi
+```
+
+10 tests covering:
+- Zero NSI equals standard matter
+- Probability conservation with NSI
+- Diagonal and off-diagonal NSI effects
+- Antineutrino mode with NSI
+- Various baselines and energies

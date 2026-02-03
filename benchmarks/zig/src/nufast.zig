@@ -1791,222 +1791,20 @@ const Complex = struct {
         return a.re * a.re + a.im * a.im;
     }
 
-    pub fn exp(a: Complex) Complex {
-        const r = @exp(a.re);
-        return .{ .re = r * @cos(a.im), .im = r * @sin(a.im) };
+    pub fn exp_imag(theta: f64) Complex {
+        return .{ .re = @cos(theta), .im = @sin(theta) };
     }
 };
 
-/// 3×3 complex matrix
-const ComplexMatrix3 = [3][3]Complex;
-
-/// Identity matrix
-fn identity3() ComplexMatrix3 {
-    const zero = Complex.init(0, 0);
-    const one = Complex.init(1, 0);
-    return .{
-        .{ one, zero, zero },
-        .{ zero, one, zero },
-        .{ zero, zero, one },
-    };
-}
-
-/// Multiply two 3×3 complex matrices
-fn matmul3(a: ComplexMatrix3, b: ComplexMatrix3) ComplexMatrix3 {
-    var result: ComplexMatrix3 = undefined;
-    for (0..3) |i| {
-        for (0..3) |j| {
-            var sum = Complex.init(0, 0);
-            for (0..3) |k| {
-                sum = sum.add(a[i][k].mul(b[k][j]));
-            }
-            result[i][j] = sum;
-        }
-    }
-    return result;
-}
-
-/// Compute propagation matrix exp(-i H L) for constant density
-/// Uses the eigenvalue decomposition from NuFast
-fn propagationMatrix(params: MatterParams, L: f64, E: f64) ComplexMatrix3 {
-    const vac = params.vacuum;
-    const c13sq = 1.0 - vac.s13sq;
-    const matter_sign = params.matterSign();
-    const effective_delta = params.effectiveDelta();
-
-    // Get vacuum mixing matrix elements
-    var Ue2sq = c13sq * vac.s12sq;
-    var Ue3sq = vac.s13sq;
-    var Um3sq = c13sq * vac.s23sq;
-    var Ut2sq = vac.s13sq * vac.s12sq * vac.s23sq;
-    var Um2sq = (1.0 - vac.s12sq) * (1.0 - vac.s23sq);
-
-    const Jrr = @sqrt(Um2sq * Ut2sq);
-    const cosd = @cos(effective_delta);
-    Um2sq = Um2sq + Ut2sq - 2.0 * Jrr * cosd;
-
-    const Amatter = matter_sign * params.Ye * params.rho * E * Constants.YerhoE2a;
-    const Dmsqee = vac.Dmsq31 - vac.s12sq * vac.Dmsq21;
-
-    const A_sum = vac.Dmsq21 + vac.Dmsq31;
-    const See = A_sum - vac.Dmsq21 * Ue2sq - vac.Dmsq31 * Ue3sq;
-    const Tmm_base = vac.Dmsq21 * vac.Dmsq31;
-    const Tee = Tmm_base * (1.0 - Ue3sq - Ue2sq);
-    const C = Amatter * Tee;
-    const A = A_sum + Amatter;
-
-    const xmat = Amatter / Dmsqee;
-    var tmp = 1.0 - xmat;
-    var lambda3 = vac.Dmsq31 + 0.5 * Dmsqee * (xmat - 1.0 + @sqrt(tmp * tmp + 4.0 * vac.s13sq * xmat));
-
-    const B = Tmm_base + Amatter * See;
-
-    // Newton-Raphson iterations
-    const n_newton = params.clampedNewton();
-    var i: u8 = 0;
-    while (i < n_newton) : (i += 1) {
-        lambda3 = (lambda3 * lambda3 * (lambda3 - A) + C) / (lambda3 * (2.0 * lambda3 - A) + B);
-    }
-
-    tmp = A - lambda3;
-    const Dlambda21 = @sqrt(tmp * tmp - 4.0 * C / lambda3);
-    const lambda2 = 0.5 * (A - lambda3 + Dlambda21);
-    const lambda1 = A - lambda3 - lambda2;
-
-    const Dlambda32 = lambda3 - lambda2;
-    const Dlambda31 = Dlambda32 + Dlambda21;
-
-    const PiDlambdaInv = 1.0 / (Dlambda31 * Dlambda32 * Dlambda21);
-    const Xp3 = PiDlambdaInv * Dlambda21;
-    const Xp2 = -PiDlambdaInv * Dlambda31;
-
-    Ue3sq = (lambda3 * (lambda3 - See) + Tee) * Xp3;
-    Ue2sq = (lambda2 * (lambda2 - See) + Tee) * Xp2;
-    const Ue1sq = 1.0 - Ue3sq - Ue2sq;
-
-    const Smm = A - vac.Dmsq21 * Um2sq - vac.Dmsq31 * Um3sq;
-    const Tmm = Tmm_base * (1.0 - Um3sq - Um2sq) + Amatter * (See + Smm - A_sum);
-
-    Um3sq = (lambda3 * (lambda3 - Smm) + Tmm) * Xp3;
-    Um2sq = (lambda2 * (lambda2 - Smm) + Tmm) * Xp2;
-    const Um1sq = 1.0 - Um3sq - Um2sq;
-
-    const Ut3sq = 1.0 - Um3sq - Ue3sq;
-    Ut2sq = 1.0 - Um2sq - Ue2sq;
-    const Ut1sq = 1.0 - Um1sq - Ue1sq;
-
-    // Get signed square roots for PMNS elements (with phases)
-    // Using convention that Ue1, Ue2 are real and positive
-    const Ue1 = @sqrt(@max(0, Ue1sq));
-    const Ue2 = @sqrt(@max(0, Ue2sq));
-    const Ue3 = @sqrt(@max(0, Ue3sq));
-    const Um1 = @sqrt(@max(0, Um1sq));
-    const Um2 = @sqrt(@max(0, Um2sq));
-    const Um3 = @sqrt(@max(0, Um3sq));
-    const Ut1 = @sqrt(@max(0, Ut1sq));
-    const Ut2 = @sqrt(@max(0, Ut2sq));
-    const Ut3 = @sqrt(@max(0, Ut3sq));
-
-    // Construct the real PMNS matrix (phases absorbed)
-    // U[alpha][i] = amplitude for flavor alpha, mass i
-    const U: [3][3]f64 = .{
-        .{ Ue1, Ue2, Ue3 },
-        .{ Um1, Um2, Um3 },
-        .{ Ut1, Ut2, Ut3 },
-    };
-
-    // Eigenvalue phases: phi_i = -lambda_i * L / (4E)
-    const Lover4E = Constants.eVsqkm_to_GeV_over4 * L / E;
-    const phi1 = -lambda1 * Lover4E;
-    const phi2 = -lambda2 * Lover4E;
-    const phi3 = -lambda3 * Lover4E;
-
-    // exp(-i phi_i)
-    const exp_phi: [3]Complex = .{
-        Complex.init(@cos(phi1), @sin(phi1)),
-        Complex.init(@cos(phi2), @sin(phi2)),
-        Complex.init(@cos(phi3), @sin(phi3)),
-    };
-
-    // S[alpha][beta] = sum_i U[alpha][i] * exp(-i phi_i) * U*[beta][i]
-    // Since we're using real U, U* = U
-    var S: ComplexMatrix3 = undefined;
-    for (0..3) |alpha| {
-        for (0..3) |beta| {
-            var sum = Complex.init(0, 0);
-            for (0..3) |ii| {
-                const coeff = U[alpha][ii] * U[beta][ii];
-                sum = sum.add(exp_phi[ii].scale(coeff));
-            }
-            S[alpha][beta] = sum;
-        }
-    }
-
-    return S;
-}
-
-/// Calculate oscillation probabilities through PREM Earth model
-///
-/// This function:
-/// 1. Computes the path through Earth for the given baseline
-/// 2. Divides the path into segments based on PREM layers
-/// 3. Computes the transfer matrix for each segment
-/// 4. Multiplies transfer matrices to get total evolution
-/// 5. Extracts probabilities from the total amplitude matrix
-///
-/// The path through Earth is symmetric about the midpoint, so we compute
-/// the product: S = S_N × ... × S_2 × S_1 × S_1 × S_2 × ... × S_N
-/// where S_i is the transfer matrix for layer i.
-pub fn matterProbabilityPrem(params: MatterParams, L: f64, E: f64) ProbabilityMatrix {
-    // Get path segments
-    var segments: [11]PathSegment = undefined;
-    const n_segments = getPathSegments(L, &segments);
-
-    if (n_segments == 0) {
-        // No valid path (L=0 or L > Earth diameter), return vacuum
-        return vacuumProbability(params.vacuum, L, E);
-    }
-
-    // Build transfer matrix product for half-path (ascending from midpoint)
-    var S_half = identity3();
-    for (0..n_segments) |i| {
-        const seg = segments[i];
-        var seg_params = params;
-        seg_params.rho = seg.rho;
-        seg_params.Ye = seg.Ye;
-        const S_seg = propagationMatrix(seg_params, seg.length_km, E);
-        S_half = matmul3(S_seg, S_half);
-    }
-
-    // The full path is symmetric: S_full = S_half^† × S_half^T in terms of layers
-    // Actually for symmetric path: S_full = S_N × ... × S_1 × S_1 × ... × S_N
-    // Build the descending half (same layers in reverse order)
-    var S_full = S_half;
-    var ri: usize = n_segments;
-    while (ri > 0) {
-        ri -= 1;
-        const seg = segments[ri];
-        var seg_params = params;
-        seg_params.rho = seg.rho;
-        seg_params.Ye = seg.Ye;
-        const S_seg = propagationMatrix(seg_params, seg.length_km, E);
-        S_full = matmul3(S_seg, S_full);
-    }
-
-    // Extract probabilities: P[alpha][beta] = |S[beta][alpha]|²
-    // (probability to go from alpha to beta)
-    var result: ProbabilityMatrix = undefined;
-    for (0..3) |alpha| {
-        for (0..3) |beta| {
-            result[alpha][beta] = S_full[beta][alpha].norm_sq();
-        }
-    }
-
-    return result;
-}
-
 /// Calculate average density and Ye along a chord through Earth
 pub fn getAverageDensityAlongPath(baseline_km: f64) DensityResult {
+    if (baseline_km <= 0) {
+        return .{ .rho = 2.6, .Ye = 0.494 }; // Surface default
+    }
+    if (baseline_km >= 2.0 * EARTH_RADIUS_KM) {
+        return .{ .rho = 2.6, .Ye = 0.494 };
+    }
+
     var segments: [11]PathSegment = undefined;
     const n_segments = getPathSegments(baseline_km, &segments);
 
@@ -2031,6 +1829,29 @@ pub fn getAverageDensityAlongPath(baseline_km: f64) DensityResult {
         .rho = weighted_rho / total_length,
         .Ye = weighted_Ye / total_length,
     };
+}
+
+/// Calculate oscillation probabilities through PREM Earth model
+///
+/// This function uses the **average density approximation**:
+/// 1. Computes the path through Earth for the given baseline
+/// 2. Calculates the density-weighted average ρ and Ye along the path
+/// 3. Uses constant-density matter oscillation with these averages
+///
+/// This is a widely-used approximation that works well for most baselines.
+/// For very long baselines with large density variations (core-crossing paths),
+/// a more sophisticated layer-by-layer calculation would be needed.
+pub fn matterProbabilityPrem(params: MatterParams, L: f64, E: f64) ProbabilityMatrix {
+    // Get average density along the path
+    const avg = getAverageDensityAlongPath(L);
+
+    // Create modified params with PREM-averaged density
+    var prem_params = params;
+    prem_params.rho = avg.rho;
+    prem_params.Ye = avg.Ye;
+
+    // Use standard constant-density calculation
+    return matterProbability(prem_params, L, E);
 }
 
 // =============================================================================
@@ -2085,9 +1906,9 @@ test "PREM: max depth calculation" {
     // Surface path: depth ≈ 0
     try std.testing.expectApproxEqAbs(getMaxDepth(10.0), 0.0, 1.0);
 
-    // DUNE baseline (1300 km): moderate depth
+    // DUNE baseline (1300 km): shallow depth (about 33 km)
     const dune_depth = getMaxDepth(1300.0);
-    try std.testing.expect(dune_depth > 50.0 and dune_depth < 200.0);
+    try std.testing.expect(dune_depth > 20.0 and dune_depth < 50.0);
 
     // Diameter path: depth = R
     try std.testing.expectApproxEqAbs(getMaxDepth(2.0 * EARTH_RADIUS_KM), EARTH_RADIUS_KM, 0.001);
@@ -2109,14 +1930,15 @@ test "PREM: path segments for DUNE baseline" {
 }
 
 test "PREM: path segments for core-crossing path" {
-    // A path that goes through the core (L ≈ 10000 km)
+    // To reach the outer core (r < 3480 km), we need L > 10673 km
+    // Use L = 11000 km to ensure we cross into the core
     var segments: [11]PathSegment = undefined;
-    const n = getPathSegments(10000.0, &segments);
+    const n = getPathSegments(11000.0, &segments);
 
-    // Should cross multiple layers
+    // Should cross multiple layers including core
     try std.testing.expect(n >= 4);
 
-    // Check that we see high-density core segments
+    // Check that we see high-density outer core segments (rho = 11.0)
     var found_core = false;
     for (0..n) |i| {
         if (segments[i].rho > 10.0) {
@@ -2215,9 +2037,9 @@ test "PREM: average density calculation" {
     const short_avg = getAverageDensityAlongPath(100.0);
     try std.testing.expect(short_avg.rho < 4.0); // Crust/upper mantle
 
-    // Core-crossing path: should have higher average density
-    const core_avg = getAverageDensityAlongPath(10000.0);
-    try std.testing.expect(core_avg.rho > 5.0); // Includes core
+    // Core-crossing path (L > 10673 km): should have higher average density
+    const core_avg = getAverageDensityAlongPath(11000.0);
+    try std.testing.expect(core_avg.rho > 5.0); // Includes outer core
 }
 
 test "PREM: atmospheric neutrino path (vertical)" {

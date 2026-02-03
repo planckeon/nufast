@@ -47,7 +47,8 @@ def _find_library() -> Path:
     elif sys.platform == "darwin":
         lib_names = ["libnufast.dylib", "libnufast.so"]
     else:
-        lib_names = ["libnufast.so"]
+        # Linux/WSL - also check for Windows DLL (for cross-platform development)
+        lib_names = ["libnufast.so", "nufast.dll"]
     
     # Search paths (relative to this file)
     this_dir = Path(__file__).parent
@@ -55,6 +56,7 @@ def _find_library() -> Path:
         this_dir,
         this_dir / "lib",
         this_dir.parent.parent / "benchmarks" / "zig" / "zig-out" / "lib",
+        this_dir.parent.parent / "benchmarks" / "zig" / "zig-out" / "bin",  # Windows puts DLLs in bin/
         Path.cwd(),
         Path.cwd() / "lib",
     ]
