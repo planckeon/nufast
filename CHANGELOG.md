@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-03
+
+### Added (Rust)
+- **Anti-neutrino mode** — `antineutrino: bool` field in `VacuumParameters` and `MatterParameters`
+  - Flips sign of δCP and matter potential (A → −A)
+  - `VacuumBatch::new()` now accepts `antineutrino` parameter
+  - `VacuumBatch::from_params()` for construction from `VacuumParameters`
+- New tests for CPT theorem validation and matter asymmetry
+
+### Added (Zig)
+- **SIMD matter calculations** — `matterProbabilitySimd()` for vectorized matter oscillations
+- **f32 mode** — 8 SIMD lanes (vs 4 for f64), 2× throughput
+  - `VacuumBatchF32`, `MatterBatchF32`, `F32Vec`
+  - `vacuumProbabilitySimdF32()`, `matterProbabilitySimdF32()`
+- **MatterBatch API** — pre-computed mixing for constant-density calculations
+- **Anti-neutrino mode** — same physics as Rust implementation
+
+### Performance (Zig SIMD)
+- Vacuum f32 SIMD: 21 ns/calc, **48 M/s** (2× faster than scalar)
+- Matter f32 SIMD: 37 ns/calc, **27 M/s** (3× faster than scalar)
+- Matter f64 SIMD: 56 ns/calc, 18 M/s (2× faster than scalar)
+
+### Documentation
+- README completely rewritten with Rust and Zig at parity
+- Updated benchmarks/README.md with SIMD results
+- Paper updated with anti-neutrino and SIMD sections
+
 ## [0.3.1] - 2026-02-03
 
 ### Added
