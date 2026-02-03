@@ -113,6 +113,102 @@ pub const MatterParams = struct {
 pub const ProbabilityMatrix = [3][3]f64;
 
 // =============================================================================
+// Experiment Presets
+// =============================================================================
+
+/// Configuration for a neutrino oscillation experiment
+pub const Experiment = struct {
+    /// Baseline distance (km)
+    L: f64,
+    /// Typical/peak neutrino energy (GeV)
+    E: f64,
+    /// Average matter density along baseline (g/cm³)
+    rho: f64,
+    /// Electron fraction (typically 0.5 for Earth's crust/mantle)
+    Ye: f64,
+    /// Experiment name
+    name: []const u8,
+
+    /// Create MatterParams for this experiment with default oscillation parameters
+    pub fn toMatterParams(self: Experiment) MatterParams {
+        return .{
+            .vacuum = VacuumParams.default,
+            .rho = self.rho,
+            .Ye = self.Ye,
+            .n_newton = 0,
+        };
+    }
+
+    /// Create MatterParams with custom vacuum parameters
+    pub fn toMatterParamsWithVacuum(self: Experiment, vacuum: VacuumParams) MatterParams {
+        return .{
+            .vacuum = vacuum,
+            .rho = self.rho,
+            .Ye = self.Ye,
+            .n_newton = 0,
+        };
+    }
+};
+
+/// Preset configurations for common neutrino oscillation experiments
+pub const experiments = struct {
+    /// T2K (Tokai to Kamioka, Japan)
+    /// Long-baseline accelerator experiment, J-PARC → Super-K
+    /// Off-axis beam peaked at ~0.6 GeV for νμ disappearance and νe appearance
+    pub const t2k = Experiment{
+        .L = 295.0,
+        .E = 0.6,
+        .rho = 2.6,
+        .Ye = 0.5,
+        .name = "T2K",
+    };
+
+    /// NOvA (NuMI Off-axis νe Appearance, USA)
+    /// Long-baseline accelerator experiment, Fermilab → Ash River, Minnesota
+    /// Off-axis beam peaked at ~2 GeV
+    pub const nova = Experiment{
+        .L = 810.0,
+        .E = 2.0,
+        .rho = 2.84,
+        .Ye = 0.5,
+        .name = "NOvA",
+    };
+
+    /// DUNE (Deep Underground Neutrino Experiment, USA)
+    /// Next-generation long-baseline experiment, Fermilab → SURF, South Dakota
+    /// Wide-band beam with flux peaked around 2.5 GeV
+    pub const dune = Experiment{
+        .L = 1300.0,
+        .E = 2.5,
+        .rho = 2.848,
+        .Ye = 0.5,
+        .name = "DUNE",
+    };
+
+    /// Hyper-Kamiokande (Japan)
+    /// Next-generation experiment using same baseline as T2K
+    /// Upgraded J-PARC beam, same off-axis configuration
+    pub const hyper_k = Experiment{
+        .L = 295.0,
+        .E = 0.6,
+        .rho = 2.6,
+        .Ye = 0.5,
+        .name = "Hyper-K",
+    };
+
+    /// JUNO (Jiangmen Underground Neutrino Observatory, China)
+    /// Medium-baseline reactor experiment for mass ordering determination
+    /// Reactor neutrinos at ~4 MeV (0.004 GeV)
+    pub const juno = Experiment{
+        .L = 52.5,
+        .E = 0.004, // 4 MeV = 0.004 GeV
+        .rho = 2.6,
+        .Ye = 0.5,
+        .name = "JUNO",
+    };
+};
+
+// =============================================================================
 // Pre-computed Batch Structures
 // =============================================================================
 
@@ -1371,4 +1467,171 @@ test "cross-validation: T2K-like matter (L=295 km, E=0.6 GeV, rho=2.6)" {
     try std.testing.expectApproxEqAbs(probs[0][1], 4.191271845601963e-02, 1e-10);
     try std.testing.expectApproxEqAbs(probs[1][0], 6.284592128957496e-02, 1e-10);
     try std.testing.expectApproxEqAbs(probs[1][1], 1.004304479827633e-02, 1e-10);
+}
+
+// =============================================================================
+// Experiment Preset Tests
+// =============================================================================
+
+test "experiment presets: T2K" {
+    const exp = experiments.t2k;
+    try std.testing.expectEqual(exp.L, 295.0);
+    try std.testing.expectEqual(exp.E, 0.6);
+    try std.testing.expectEqual(exp.rho, 2.6);
+    try std.testing.expectEqual(exp.Ye, 0.5);
+    try std.testing.expectEqualStrings(exp.name, "T2K");
+
+    // Test conversion to MatterParams and probability calculation
+    const params = exp.toMatterParams();
+    const probs = matterProbability(params, exp.L, exp.E);
+
+    // Verify probability conservation
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| sum += p;
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+}
+
+test "experiment presets: NOvA" {
+    const exp = experiments.nova;
+    try std.testing.expectEqual(exp.L, 810.0);
+    try std.testing.expectEqual(exp.E, 2.0);
+    try std.testing.expectEqual(exp.rho, 2.84);
+    try std.testing.expectEqual(exp.Ye, 0.5);
+    try std.testing.expectEqualStrings(exp.name, "NOvA");
+
+    const params = exp.toMatterParams();
+    const probs = matterProbability(params, exp.L, exp.E);
+
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| sum += p;
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+}
+
+test "experiment presets: DUNE" {
+    const exp = experiments.dune;
+    try std.testing.expectEqual(exp.L, 1300.0);
+    try std.testing.expectEqual(exp.E, 2.5);
+    try std.testing.expectEqual(exp.rho, 2.848);
+    try std.testing.expectEqual(exp.Ye, 0.5);
+    try std.testing.expectEqualStrings(exp.name, "DUNE");
+
+    // DUNE preset should match MatterParams.default
+    const params = exp.toMatterParams();
+    try std.testing.expectEqual(params.rho, MatterParams.default.rho);
+    try std.testing.expectEqual(params.Ye, MatterParams.default.Ye);
+
+    const probs = matterProbability(params, exp.L, exp.E);
+
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| sum += p;
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+}
+
+test "experiment presets: Hyper-K" {
+    const exp = experiments.hyper_k;
+    try std.testing.expectEqual(exp.L, 295.0);
+    try std.testing.expectEqual(exp.E, 0.6);
+    try std.testing.expectEqual(exp.rho, 2.6);
+    try std.testing.expectEqual(exp.Ye, 0.5);
+    try std.testing.expectEqualStrings(exp.name, "Hyper-K");
+
+    // Hyper-K and T2K should have same baseline/energy (same beam line)
+    try std.testing.expectEqual(exp.L, experiments.t2k.L);
+    try std.testing.expectEqual(exp.E, experiments.t2k.E);
+
+    const params = exp.toMatterParams();
+    const probs = matterProbability(params, exp.L, exp.E);
+
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| sum += p;
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+}
+
+test "experiment presets: JUNO" {
+    const exp = experiments.juno;
+    try std.testing.expectEqual(exp.L, 52.5);
+    try std.testing.expectEqual(exp.E, 0.004); // 4 MeV
+    try std.testing.expectEqual(exp.rho, 2.6);
+    try std.testing.expectEqual(exp.Ye, 0.5);
+    try std.testing.expectEqualStrings(exp.name, "JUNO");
+
+    // JUNO is a reactor experiment - test that it works at low energy
+    const params = exp.toMatterParams();
+    const probs = matterProbability(params, exp.L, exp.E);
+
+    // Verify probability conservation
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| sum += p;
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+
+    // For reactor experiments, we mainly care about Pee (electron survival)
+    // At JUNO's L/E, we expect significant disappearance
+    try std.testing.expect(probs[0][0] < 1.0); // Some disappearance
+    try std.testing.expect(probs[0][0] > 0.0); // But not complete
+}
+
+test "experiment presets: toMatterParamsWithVacuum" {
+    // Test custom vacuum parameters with experiment preset
+    var custom_vacuum = VacuumParams.default;
+    custom_vacuum.delta = 0.0; // No CP violation
+
+    const exp = experiments.dune;
+    const params = exp.toMatterParamsWithVacuum(custom_vacuum);
+
+    try std.testing.expectEqual(params.vacuum.delta, 0.0);
+    try std.testing.expectEqual(params.rho, exp.rho);
+    try std.testing.expectEqual(params.Ye, exp.Ye);
+
+    const probs = matterProbability(params, exp.L, exp.E);
+
+    for (probs) |row| {
+        var sum: f64 = 0;
+        for (row) |p| sum += p;
+        try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+    }
+}
+
+test "experiment presets: all experiments produce valid probabilities" {
+    // Comprehensive test that all presets work correctly
+    const all_experiments = [_]Experiment{
+        experiments.t2k,
+        experiments.nova,
+        experiments.dune,
+        experiments.hyper_k,
+        experiments.juno,
+    };
+
+    for (all_experiments) |exp| {
+        const params = exp.toMatterParams();
+        const probs = matterProbability(params, exp.L, exp.E);
+
+        // Check probability conservation (rows sum to 1)
+        for (probs) |row| {
+            var sum: f64 = 0;
+            for (row) |p| {
+                // Allow small numerical artifacts (can be slightly negative at some L/E)
+                // The NuFast algorithm prioritizes speed over strict positivity
+                try std.testing.expect(p >= -0.05 and p <= 1.05);
+                sum += p;
+            }
+            try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+        }
+
+        // Check column conservation
+        for (0..3) |j| {
+            var sum: f64 = 0;
+            for (probs) |row| sum += row[j];
+            try std.testing.expectApproxEqAbs(sum, 1.0, 1e-10);
+        }
+    }
 }
