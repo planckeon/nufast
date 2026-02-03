@@ -195,6 +195,36 @@ cd wasm && bun test-ts.ts
 2. [NuFast](https://github.com/PeterDenton/NuFast) — original implementations
 3. [NuFit 5.2](http://www.nu-fit.org) (2022)
 
+## Citation
+
+If you use nufast in your research, please cite:
+
+```bibtex
+@software{nufast,
+  author = {Kataru, Baalateja},
+  title = {nufast: Fast Three-Flavor Neutrino Oscillation Probabilities},
+  year = {2026},
+  publisher = {GitHub},
+  url = {https://github.com/planckeon/nufast},
+  note = {Rust/Zig/WebAssembly implementation of the NuFast algorithm}
+}
+```
+
+The algorithm is based on:
+
+```bibtex
+@article{Denton:2024xzk,
+  author = {Denton, Peter B. and Parke, Stephen J.},
+  title = "{NuFast: Fast and Accurate Neutrino Oscillation Probabilities}",
+  eprint = "2405.02400",
+  archivePrefix = "arXiv",
+  primaryClass = "hep-ph",
+  year = "2024"
+}
+```
+
+[Benchmark Paper (PDF)](https://github.com/planckeon/nufast/blob/main/paper/nufast-benchmark.pdf)
+
 ## License
 
 MIT
