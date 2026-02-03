@@ -337,6 +337,23 @@ The Zig implementation includes:
 - *f32 mode* for 2× SIMD lanes when full precision isn't needed
 - *MatterBatch* for pre-computed constant-density calculations
 - *Anti-neutrino mode* with sign-flipped matter potential and δCP
+- *Experiment presets* for DUNE, T2K, NOvA, Hyper-K, and JUNO
+
+=== Experiment Presets
+
+The Zig implementation includes pre-configured parameters for common experiments:
+
+```zig
+const nufast = @import("nufast");
+
+// Use a preset directly
+const dune = nufast.experiments.dune;
+const probs = nufast.matterProbability(dune.toMatterParams(), dune.L, dune.E);
+
+// Available: t2k, nova, dune, hyper_k, juno
+```
+
+Each preset provides baseline $L$, peak energy $E$, and appropriate matter density for the experiment's path through Earth.
 
 == Anti-Neutrino Support
 

@@ -29,6 +29,19 @@ All implementations support:
 - Anti-neutrino mode (sign-flipped δCP and matter potential)
 - Batch APIs for pre-computed mixing matrices
 
+## Features
+
+- **Vacuum oscillations** — Exact analytic formula
+- **Matter effects** — DMP approximation with optional Newton refinement
+- **PREM Earth model** (Zig) — Variable density for long-baseline and atmospheric neutrinos
+- **NSI support** (Zig) — Non-Standard Interactions with complex ε matrix
+- **Sterile neutrinos** (Zig) — 3+1 model with exact 4-flavor vacuum oscillations
+- **Anti-neutrino mode** — Sign-flipped δCP and matter potential
+- **Batch APIs** — Pre-computed mixing for 45% speedup
+- **SIMD vectorization** (Zig) — 4×f64 or 8×f32 lanes
+- **Experiment presets** (Zig) — DUNE, T2K, NOvA, Hyper-K, JUNO
+- **Cross-validated** — Tested against original Python implementation
+
 ## Usage
 
 ### Rust
@@ -71,6 +84,11 @@ const probs = nufast.vacuumProbability(params, 1300.0, 2.5);
 const batch = nufast.VacuumBatch.init(params);
 var energies: nufast.F64Vec = .{ 1.0, 2.0, 3.0, 4.0 };
 const p_vec = nufast.vacuumProbabilitySimd(batch, 1300.0, energies);
+
+// Experiment presets
+const dune = nufast.experiments.dune;
+const matter_params = dune.toMatterParams();
+const probs = nufast.matterProbability(matter_params, dune.L, dune.E);
 ```
 
 ### WebAssembly (TypeScript)

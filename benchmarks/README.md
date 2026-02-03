@@ -110,6 +110,81 @@ WASM binaries:
 
 ## New Features (v0.5.0)
 
+### Experiment Presets (Zig)
+
+Pre-configured parameters for common neutrino experiments:
+
+```zig
+const nufast = @import("nufast");
+
+// Use a preset directly
+const dune = nufast.experiments.dune;
+const probs = nufast.matterProbability(dune.toMatterParams(), dune.L, dune.E);
+
+// Available presets:
+// - experiments.t2k      — T2K (295 km, 0.6 GeV)
+// - experiments.nova     — NOvA (810 km, 2.0 GeV)  
+// - experiments.dune     — DUNE (1300 km, 2.5 GeV)
+// - experiments.hyper_k  — Hyper-K (295 km, 0.6 GeV)
+// - experiments.juno     — JUNO (52.5 km, 4 MeV)
+```
+
+### PREM Earth Model (Zig)
+
+Variable density calculations using the Preliminary Reference Earth Model:
+
+```zig
+const nufast = @import("nufast");
+
+// Automatic path integration through Earth layers
+const probs = nufast.matterProbabilityPrem(params, 1300.0, 2.5);
+
+// Get average density for a baseline
+const avg = nufast.getAverageDensityAlongPath(1300.0);
+// avg.rho ≈ 2.8 g/cm³, avg.Ye ≈ 0.49
+
+// Query density at specific depth/radius
+const surface = nufast.premDensityAtDepth(0);      // Crust: ~2.6 g/cm³
+const deep = nufast.premDensityAtDepth(3000.0);    // Lower mantle: ~4.9 g/cm³
+```
+
+Supports baselines up to Earth diameter (~12,742 km) for atmospheric neutrinos.
+
+### C FFI / Python Bindings
+
+Build a shared library for Python/ctypes:
+
+```bash
+cd zig
+zig build lib  # Produces libnufast.so or nufast.dll
+```
+
+Use from Python:
+
+```python
+# Option 1: Low-level ctypes (see above)
+
+# Option 2: High-level Python wrapper
+from nufast import vacuum_probability, matter_probability, experiment_probability
+
+# Full 3×3 probability matrix
+probs = vacuum_probability(L=1300, E=2.5)
+print(f"P(νμ → νe) = {probs.Pme:.4f}")
+
+# Matter effects
+probs = matter_probability(L=1300, E=2.5, rho=2.848)
+
+# Use experiment presets
+probs = experiment_probability("DUNE")
+probs = experiment_probability("T2K", antineutrino=True)
+
+# Batch processing (optimized)
+energies = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
+pme_values = vacuum_Pme_batch(1300, energies)
+```
+
+Note: Set `NUFAST_LIB` environment variable to library path if not auto-detected.
+
 ### WebAssembly Support
 
 Build WASM with:

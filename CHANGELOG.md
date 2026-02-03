@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - 2026-02-03
 
+### Added (Zig)
+- **Experiment presets** — Pre-configured parameters for common experiments:
+  - `experiments.dune` — DUNE (Fermilab → SURF, 1300 km, 2.5 GeV)
+  - `experiments.t2k` — T2K (J-PARC → Super-K, 295 km, 0.6 GeV)
+  - `experiments.nova` — NOvA (Fermilab → Ash River, 810 km, 2.0 GeV)
+  - `experiments.hyper_k` — Hyper-Kamiokande (same baseline as T2K)
+  - `experiments.juno` — JUNO reactor experiment (52.5 km, 4 MeV)
+  - Each preset has `.toMatterParams()` for easy calculation setup
+- **PREM Earth model** — Variable density calculations for long baselines:
+  - `matterProbabilityPrem(params, L, E)` — Automatic path integration
+  - `getAverageDensityAlongPath(L)` — Density averaging for baselines
+  - `premDensityAtRadius(r)` / `premDensityAtDepth(d)` — Layer lookup
+  - Full PREM layers: inner/outer core, lower mantle, transition zone, upper mantle, crust
+  - Supports atmospheric neutrino baselines (up to Earth diameter)
+- **C FFI exports** (`c_exports.zig`) — Full C-ABI interface for Python/ctypes
+  - Stateful API with global parameter buffers
+  - Stateless API with caller-provided buffers
+  - Batch processing (up to 1024 points)
+  - Build with `zig build lib` → `libnufast.so/.dll`
+- **Python bindings** (`bindings/python/nufast.py`) — High-level ctypes wrapper
+  - `vacuum_probability()`, `matter_probability()` — Full 3×3 matrix
+  - `vacuum_Pme()`, `matter_Pme()` — Quick P(νμ → νe) calculation
+  - `vacuum_Pme_batch()`, `matter_Pme_batch()` — Batch processing
+  - `experiment_probability("DUNE")` — Preset experiment support
+  - Zero dependencies (pure Python + ctypes)
+- **NSI (Non-Standard Interactions)** (`nsi.zig`) — Extended matter potential
+  - Complex ε matrix parameterization (εee, εμμ, εττ, εeμ, εeτ, εμτ)
+  - Works with existing NuFast algorithm (best for |ε| ≲ 0.3)
+  - Full Hermitian matrix support with complex off-diagonal elements
+- **Sterile neutrino oscillations** (`sterile.zig`) — 3+1 model implementation
+  - Exact vacuum probabilities for 4-flavor oscillations
+  - Full 4×4 PMNS matrix with θ14, θ24, θ34 mixing angles
+  - Additional CP phases δ14, δ24
+  - Typical Δm²41 ~ 1 eV² for short-baseline anomalies
+  - Note: NuFast approximation doesn't apply to 4-flavor; uses exact diagonalization
+
 ### Added (Zig WebAssembly)
 - **WASM build target** — `zig build wasm` produces 13.6 KB WASM binary
 - **WASM SIMD build** — `zig build wasm-simd` with SIMD128 support
@@ -38,6 +74,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `benchmarks/zig/wasm/package.json` — NPM package
 - `benchmarks/zig/wasm/test.html` — Interactive browser demo
 - `benchmarks/zig/wasm/test-ts.ts` — TypeScript test suite
+
+### Added (CI/CD)
+- **GitHub Actions workflow** — Automated CI for Rust and Zig
+  - Rust: build, test, clippy, fmt on ubuntu-latest
+  - Zig: build and test on ubuntu-latest
+  - Triggered on push/PR to main
+
+### Added (Testing)
+- **Cross-validation tests** — Matter probabilities validated against original Python
+  - 6 test cases across different L/E/ρ combinations
+  - Tolerance: 1e-6 relative error
+  - Validates correctness of Newton refinement (N=0,1,2)
 
 ## [0.4.0] - 2026-02-03
 

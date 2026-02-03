@@ -11,7 +11,18 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // Unit tests
+    // Create the sterile module
+    const sterile_mod = b.addModule("sterile", .{
+        .root_source_file = b.path("src/sterile.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "nufast", .module = nufast_mod },
+        },
+    });
+    _ = sterile_mod;
+
+    // Unit tests for nufast
     const lib_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/nufast.zig"),
@@ -21,8 +32,40 @@ pub fn build(b: *std.Build) void {
     });
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
+    // Unit tests for sterile
+    const sterile_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/sterile.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    sterile_test_mod.addImport("nufast", nufast_mod);
+
+    const sterile_unit_tests = b.addTest(.{
+        .root_module = sterile_test_mod,
+    });
+    const run_sterile_unit_tests = b.addRunArtifact(sterile_unit_tests);
+
+    // Unit tests for NSI
+    const nsi_test_mod = b.createModule(.{
+        .root_source_file = b.path("src/nsi.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    nsi_test_mod.addImport("nufast", nufast_mod);
+
+    const nsi_unit_tests = b.addTest(.{
+        .root_module = nsi_test_mod,
+    });
+    const run_nsi_unit_tests = b.addRunArtifact(nsi_unit_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
+    test_step.dependOn(&run_sterile_unit_tests.step);
+    test_step.dependOn(&run_nsi_unit_tests.step);
+
+    // NSI-only test step
+    const nsi_test_step = b.step("test-nsi", "Run NSI unit tests only");
+    nsi_test_step.dependOn(&run_nsi_unit_tests.step);
 
     // Benchmark executable
     const bench_mod = b.createModule(.{
@@ -115,6 +158,28 @@ pub fn build(b: *std.Build) void {
 
     const wasm_simd_step = b.step("wasm-simd", "Build WASM library with SIMD");
     wasm_simd_step.dependOn(&wasm_simd.step);
+
+    // =============================================================================
+    // Shared Library for C/Python FFI
+    // =============================================================================
+
+    // Create C exports module
+    const c_exports_mod = b.createModule(.{
+        .root_source_file = b.path("src/c_exports.zig"),
+        .target = target,
+        .optimize = .ReleaseFast,
+    });
+
+    const lib = b.addLibrary(.{
+        .name = "nufast",
+        .root_module = c_exports_mod,
+        .linkage = .dynamic,
+    });
+
+    b.installArtifact(lib);
+
+    const lib_step = b.step("lib", "Build shared library for C/Python FFI");
+    lib_step.dependOn(&lib.step);
 
     // =============================================================================
     // Documentation
